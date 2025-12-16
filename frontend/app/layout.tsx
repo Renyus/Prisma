@@ -7,8 +7,8 @@ import { ToastContainer } from "@/components/ui/ToastContainer";
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: "ChatGPT 风格聊天",
-  description: "仿 ChatGPT 官网的对话体验。",
+  title: "Prisma",
+  description: "Prisma",
 };
 
 export default function RootLayout({
