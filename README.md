@@ -30,18 +30,19 @@
 
 请确保安装了 Python 3.10+。在项目根目录下：
 
-```bash
 # 创建虚拟环境
 python -m venv .venv
 
 # 激活环境 (Windows)
 .\.venv\Scripts\activate
+
 # 激活环境 (macOS/Linux)
 source .venv/bin/activate
 
 # 安装依赖
 pip install -r requirements.txt
-2. 前端环境配置 (Frontend Setup)
+
+### 2. 前端环境配置 (Frontend Setup)
 进入前端目录（假设为 frontend）并安装依赖：
 
 Bash
@@ -63,6 +64,7 @@ Bash
 
 # 终端 1 (后端)
 uvicorn main:app --reload
+Bash
 
 # 终端 2 (前端)
 cd frontend
