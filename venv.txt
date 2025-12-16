@@ -1,0 +1,12 @@
+# 1. 创建虚拟环境 (这会生成一个 venv 文件夹)
+python -m venv venv
+
+# 2. 激活它 (注意斜杠方向)
+.\venv\Scripts\activate
+
+# 3. 重新安装依赖 (这次是装在这个项目独立的沙盒里)
+pip install -r requirements.txt
+
+python -m uvicorn app.main:app --reload --port 8000
+
+cmd /c "npm run dev"

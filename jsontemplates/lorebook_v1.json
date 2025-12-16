@@ -1,0 +1,28 @@
+{
+  "name": "Fantasy World (示例世界书)",
+  "description": "通用奇幻世界观设定，包含魔法、地理和种族信息。",
+  "entries": {
+    "magic_system": {
+      "keys": ["魔法", "Magic", "Mana"],
+      "content": "魔法的源泉是'以太'(Aether)，弥漫在空气中。施法者通过吟唱咒语或绘制符文来引导以太。",
+      "comment": "魔法系统基础",
+      "enabled": true,
+      "priority": 20,
+      "position": "before_char",
+      "use_regex": false,
+      "case_sensitive": false
+    },
+    "location_capital": {
+      "keys": ["王都", "Capital", "SilverCity"],
+      "content": "银月城(Silver City)是人类王国的首都，以洁白的城墙和高耸的法师塔闻名。",
+      "enabled": true,
+      "priority": 10
+    },
+    "race_dragon": {
+      "keys": ["龙", "Dragon"],
+      "content": "巨龙是极其稀有且强大的生物，通常居住在极端的环境中。它们具有极高的智慧，并且能够使用龙语魔法。",
+      "enabled": true,
+      "exclude": false
+    }
+  }
+}

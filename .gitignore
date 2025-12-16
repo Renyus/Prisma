@@ -1,0 +1,7 @@
+/backend/app/__pycache__
+/backend/app/api/endpoints/__pycache__
+/backend/app/core/__pycache__
+/backend/app/crud/__pycache__
+/backend/app/db/__pycache__
+/backend/app/schemas/__pycache__
+/backend/app/services/__pycache__
