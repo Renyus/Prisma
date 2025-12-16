@@ -33,7 +33,8 @@ const METADATA_TAGS = [
   "thinking",
   "analysis",
   "hidden",
-  "sys_log"
+  "sys_log",
+  "StatusBlock"
 ];
 
 // 2. (可选) 定义标签在界面上显示的中文标题
@@ -43,7 +44,8 @@ const TAG_LABELS: Record<string, string> = {
   thinking: "思考过程",
   analysis: "剧情分析",
   hidden: "隐藏信息",
-  sys_log: "系统日志"
+  sys_log: "系统日志",
+  StatusBlock: "状态"
 };
 
 // 3. 定义纯粹需要移除的包装标签 (内容保留，只删标签本身)

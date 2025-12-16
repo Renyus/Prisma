@@ -15,12 +15,12 @@ echo Python found.
 echo Checking for Node.js and npm...
 where npm >nul 2>nul
 if %errorlevel% neq 0 (
-    echo npm not found. Please install Node.js (which includes npm).
+    echo npm not found. Please install Node.js - which includes npm.
     echo Exiting...
     pause
     exit /b 1
 )
-npm --version
+call npm --version
 echo npm found.
 
 echo ====================================
@@ -58,7 +58,7 @@ echo ====================================
 cd frontend
 
 echo Installing Node.js dependencies...
-npm install
+call npm install
 if %errorlevel% neq 0 (
     echo Failed to install Node.js dependencies.
     pause

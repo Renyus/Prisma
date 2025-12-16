@@ -10,3 +10,4 @@
 *.db
 /frontend/.next
 /frontend/node_modules
+/backend/chroma_db
