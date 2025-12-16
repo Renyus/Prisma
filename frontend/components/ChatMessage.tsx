@@ -45,7 +45,7 @@ const TAG_LABELS: Record<string, string> = {
   analysis: "剧情分析",
   hidden: "隐藏信息",
   sys_log: "系统日志",
-  StatusBlock: "状态"
+  StatusBlock: "状态模块"
 };
 
 // 3. 定义纯粹需要移除的包装标签 (内容保留，只删标签本身)
