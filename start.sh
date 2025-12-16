@@ -1,92 +1,49 @@
 #!/bin/bash
+set -m # Enable job control
 
-# --- Configuration ---
-BACKEND_PORT=${BACKEND_PORT:-8000}
-FRONTEND_PORT=${FRONTEND_PORT:-3000}
-PROJECT_ROOT=$(pwd)
+echo "Changing to script directory..."
+cd "$(dirname "$0")"
 
-# --- Utility Functions ---
-
-log_info() {
-    echo -e "\033[0;32m[INFO]\033[0m $1"
-}
-
-log_warn() {
-    echo -e "\033[0;33m[WARN]\033[0m $1"
-}
-
-log_error() {
-    echo -e "\033[0;31m[ERROR]\033[0m $1"
-    exit 1
-}
-
-check_command() {
-    command -v "$1" >/dev/null 2>&1 || log_error "$1 is not installed. Please install it to proceed."
-}
-
-# --- Cleanup on exit ---
+# Function to clean up background processes
 cleanup() {
-    log_info "Stopping all background processes..."
-    # Kill processes started by this script in the background
-    kill $(jobs -p) 2>/dev/null
-    log_info "Cleanup complete."
+    echo -e "\nStopping services..."
+    if [ -n "$BACKEND_PID" ]; then
+        kill "$BACKEND_PID" 2>/dev/null || true
+        echo "Backend service (PID $BACKEND_PID) stopped."
+    fi
+    if [ -n "$FRONTEND_PID" ]; then
+        kill "$FRONTEND_PID" 2>/dev/null || true
+        echo "Frontend service (PID $FRONTEND_PID) stopped."
+    fi
     exit 0
 }
-trap cleanup SIGINT SIGTERM
 
-# --- Prerequisites Check ---
-log_info "Checking prerequisites..."
-check_command python3
-check_command pip3
-check_command node
-check_command npm
-log_info "Prerequisites check complete."
+# Trap Ctrl+C (SIGINT), SIGTERM, and EXIT to run cleanup function
+trap cleanup SIGINT SIGTERM EXIT
 
-# --- Backend Setup and Start (Python/FastAPI) ---
-log_info "Setting up and starting backend..."
-cd "$PROJECT_ROOT/backend" || log_error "Failed to enter backend directory."
-
-# Create and activate virtual environment
-if [ ! -d ".venv" ]; then
-    log_info "Creating Python virtual environment..."
-    python3 -m venv .venv || log_error "Failed to create virtual environment."
-fi
-source .venv/bin/activate || log_error "Failed to activate virtual environment."
-log_info "Python virtual environment activated."
-
-# Install dependencies
-if [ -f "requirements.txt" ]; then
-    log_info "Installing backend dependencies..."
-    pip install -r requirements.txt || log_error "Failed to install backend dependencies."
-else
-    log_warn "requirements.txt not found in backend directory. Skipping dependency installation."
-fi
-
-log_info "Starting FastAPI backend on http://localhost:$BACKEND_PORT ..."
-# Start backend in the background
-uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" --reload &
+echo "===================================="
+echo "--- Starting Backend Service ---"
+echo "===================================="
+# Start backend in a subshell, redirect logs to backend.log, and run in background
+(cd backend && source .venv/bin/activate && uvicorn app.main:app --reload &> ../backend.log &) &
 BACKEND_PID=$!
-log_info "Backend process started with PID: $BACKEND_PID"
-cd "$PROJECT_ROOT"
+echo "Backend service started with PID $BACKEND_PID. Logs can be found in backend.log in the project root."
+echo "Access backend at http://127.0.0.1:8000 (default)"
 
-# --- Frontend Setup and Start (Next.js) ---
-log_info "Setting up and starting frontend..."
-cd "$PROJECT_ROOT/frontend" || log_error "Failed to enter frontend directory."
-
-# Install dependencies
-log_info "Installing frontend dependencies..."
-npm install || log_error "Failed to install frontend dependencies."
-
-log_info "Starting Next.js frontend on http://localhost:$FRONTEND_PORT ..."
-# Start frontend in the background
-npm run dev &
+echo "===================================="
+echo "--- Starting Frontend Service ---"
+echo "===================================="
+# Start frontend in a subshell, redirect logs to frontend.log, and run in background
+(cd frontend && npm run dev &> ../frontend.log &) &
 FRONTEND_PID=$!
-log_info "Frontend process started with PID: $FRONTEND_PID"
-cd "$PROJECT_ROOT"
+echo "Frontend service started with PID $FRONTEND_PID. Logs can be found in frontend.log in the project root."
+echo "Access frontend at http://localhost:3000 (default)"
 
-log_info "Both backend and frontend services are starting. Please wait for them to be fully operational."
-log_info "Backend: http://localhost:$BACKEND_PORT"
-log_info "Frontend: http://localhost:$FRONTEND_PORT"
-log_info "Press Ctrl+C to stop both services."
+echo "===================================="
+echo "Both backend and frontend services are running in the background."
+echo "You can check backend.log and frontend.log for output."
+echo "Press Ctrl+C to stop both services."
+echo "===================================="
 
-wait # Wait for all background jobs to finish (or for Ctrl+C)
+# Keep the script running to allow trap to catch signals
+wait "$BACKEND_PID" "$FRONTEND_PID"

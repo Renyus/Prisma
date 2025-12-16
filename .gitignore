@@ -5,3 +5,8 @@
 /backend/app/db/__pycache__
 /backend/app/schemas/__pycache__
 /backend/app/services/__pycache__
+/${APPDATA}
+/backend/.venv
+*.db
+/frontend/.next
+/frontend/node_modules
