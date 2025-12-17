@@ -207,6 +207,9 @@ export function CharacterCardPanel({ open, onClose }: Props) {
               </div>
               <Field label="Creator Notes" textarea value={editForm.creator_notes} onChange={(v: string) => setEditForm((s) => ({ ...s, creator_notes: v }))} />
               <Field label="Tags" value={editForm.tags} onChange={(v: string) => setEditForm((s) => ({ ...s, tags: v }))} />
+              <Field label="User Alias" value={editForm.user_alias} onChange={(v: string) => setEditForm((s) => ({ ...s, user_alias: v }))} />
+              <Field label="Alternate Greetings (one per line)" textarea value={editForm.alternate_greetings} onChange={(v: string) => setEditForm((s) => ({ ...s, alternate_greetings: v }))} />
+              <Field label="Source Filename" value={editForm.source_filename} onChange={(v: string) => setEditForm((s) => ({ ...s, source_filename: v }))} />
             </div>
              <div className="mt-6 flex justify-end gap-3">
                <button onClick={closeEditModal} className="px-6 py-2.5 rounded-full text-gray-600 hover:bg-gray-100 font-medium transition">Cancel</button>

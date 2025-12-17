@@ -31,6 +31,9 @@ export function useCharacterPanelController() {
         system_prompt: "",
         creator_notes: "",
         tags: "",
+        user_alias: "",
+        alternate_greetings: "",
+        source_filename: "",
     });
 
     // --- Derived State ---
@@ -126,12 +129,15 @@ export function useCharacterPanelController() {
             system_prompt: card.system_prompt || "",
             creator_notes: card.creator_notes || "",
             tags: Array.isArray(card.tags) ? card.tags.join(", ") : "",
+            user_alias: card.user_alias || "",
+            alternate_greetings: Array.isArray(card.alternate_greetings) ? card.alternate_greetings.join('\n') : "",
+            source_filename: card.source_filename || "",
         });
     };
 
     const saveEditModal = () => {
         if (!editCardId) return;
-        const { name, description, persona, scenario, first_mes, system_prompt, creator_notes, tags } = editForm;
+        const { name, description, persona, scenario, first_mes, system_prompt, creator_notes, tags, user_alias, alternate_greetings, source_filename } = editForm;
         updateCard(editCardId, {
             name: name.trim() || "未命名角色",
             description,
@@ -141,6 +147,9 @@ export function useCharacterPanelController() {
             system_prompt,
             creator_notes,
             tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+            user_alias,
+            alternate_greetings: alternate_greetings.split('\n').map((g) => g.trim()).filter(Boolean),
+            source_filename,
         });
         setCurrentCard(editCardId);
         setEditCardId(null);

@@ -31,6 +31,8 @@ class CharacterCard(Base):
     tags = Column(JSON, default=list)
     alternate_greetings = Column(JSON, default=list) # [新增]
     user_alias = Column(String, default="")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    source_filename = Column(String, nullable=True)
     messages = relationship("ChatMessage", back_populates="character", cascade="all, delete-orphan")
 
 # === 3. 聊天记录 ===

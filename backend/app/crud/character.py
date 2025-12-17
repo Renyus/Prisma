@@ -20,7 +20,8 @@ def create_card(db: Session, card: CharacterCardCreate):
         # [修复] 直接传入 list，不需要 join
         tags=card.tags, 
         alternate_greetings=card.alternate_greetings, # [新增]
-        user_alias=card.user_alias
+        user_alias=card.user_alias,
+        source_filename=card.source_filename
     )
     db.add(db_card)
     db.commit()

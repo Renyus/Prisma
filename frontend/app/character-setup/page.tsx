@@ -236,6 +236,30 @@ export default function CharacterSetupPage() {
               )
             }
           />
+          <TextInput
+            label="用户别名（user_alias）"
+            value={get("user_alias")}
+            onChange={(e) => updateField("user_alias", e.target.value)}
+          />
+          <TextArea
+            label="备用问候语（alternate_greetings，每行一个）"
+            rows={4}
+            value={Array.isArray(get("alternate_greetings")) ? (get("alternate_greetings") as string[]).join("\n") : ""}
+            onChange={(e) =>
+              updateField(
+                "alternate_greetings",
+                e.target.value
+                  .split("\n")
+                  .map((g) => g.trim())
+                  .filter(Boolean)
+              )
+            }
+          />
+          <TextInput
+            label="源文件名（source_filename）"
+            value={get("source_filename")}
+            onChange={(e) => updateField("source_filename", e.target.value)}
+          />
         </CharacterSection>
 
         <div className="mt-10 grid grid-cols-2 gap-3">

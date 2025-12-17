@@ -19,6 +19,9 @@ class CharacterCardBase(BaseModel):
 
     # [新增] 对应 models.py 中的 user_alias
     user_alias: Optional[str] = "" 
+    
+    # [新增] 对应前端的 source_filename 字段
+    source_filename: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -38,6 +41,7 @@ class CharacterCardUpdate(BaseModel):
     tags: Optional[List[str]] = None
     alternate_greetings: Optional[List[str]] = None
     user_alias: Optional[str] = None
+    source_filename: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
