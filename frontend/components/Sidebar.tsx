@@ -6,6 +6,7 @@ import { useSidebarController } from "@/hooks/controllers/useSidebarController";
 import { SidebarHeader } from "./sidebar/SidebarHeader";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
 import { SidebarSettings } from "./sidebar/SidebarSettings";
+import versionData from "@/version.json";
 
 type SidebarProps = {
   onNewChat?: () => void;
@@ -69,6 +70,11 @@ export default function Sidebar({
             setMaxTokens={setMaxTokens}
             currentPreset={currentPreset}
         />
+        <div className="py-2 text-center select-none opacity-50 hover:opacity-100 transition-opacity">
+            <p className="text-[10px] text-gray-400 font-mono tracking-widest">
+                Version {versionData.version}
+            </p>
+        </div>
     </aside>
   );
 }
