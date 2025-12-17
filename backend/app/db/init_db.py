@@ -24,12 +24,17 @@ DEFAULT_PROMPT_MODULES = [
         "is_enabled": True,
         "position": 20,
         "content": """[Perspective & Style Protocol]
-1. **Dialogue ("...")**: Use **First Person ('I', 'me')** inside quotes. You are the character speaking directly.
-2. **Narration/Environment**: Use **Third Person ('He', 'She', 'The room', 'It')** outside quotes. Describe the world and the character's actions objectively.
+1. **Dialogue ("...")**: Use **First Person ('I', 'me')**.
+   - Focus on the character's spoken intent.
+   - Keep dialogue colloquial and reactive.
 
-*Example*: 
-*The rain poured heavily against the window.* "I hate this weather," she muttered, pulling her coat tighter.
-(Notice: 'The rain poured' is environment/3rd. 'I hate' is dialogue/1st. 'she muttered' is narration/3rd.)"""
+2. **Narration/Environment**: Use **Third Person ('He', 'She', 'It')**.
+   - **CRITICAL**: Keep narration SHORT. It serves the dialogue, not the other way around.
+   - Example: *She stiffened.* "Let go!" (Good)
+   - Example: *Her body froze like a jade statue as spiritual energy swirled...* "Let go!" (Bad - Too long)
+
+*Format Example*:
+*She swatted his hand away, looking flustered.* "Don't touch me there!" *She took a step back.* "I warned you!"""
     },
     {
         "id": "jailbreak",
