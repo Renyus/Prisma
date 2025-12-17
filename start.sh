@@ -3,7 +3,17 @@ set -m # Enable job control
 
 echo "Changing to script directory..."
 cd "$(dirname "$0")"
-
+echo "Checking and cleaning up ports..."
+# 检查并杀掉占用 8000 端口 (后端) 的进程
+if lsof -ti:8000 >/dev/null; then
+    echo "Port 8000 is occupied. Killing process..."
+    lsof -ti:8000 | xargs kill -9
+fi
+# 检查并杀掉占用 3000 端口 (前端) 的进程
+if lsof -ti:3000 >/dev/null; then
+    echo "Port 3000 is occupied. Killing process..."
+    lsof -ti:3000 | xargs kill -9
+fi
 # Function to clean up background processes
 cleanup() {
     echo -e "\nStopping services..."
