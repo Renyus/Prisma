@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Info, SlidersHorizontal, Brain, Cpu } from "lucide-react";
 import CollapsibleCard from "../ui/CollapsibleCard";
 
@@ -110,7 +111,7 @@ export function SidebarSettings({
                      <ParamSlider label="Temp" value={temperature} setValue={setTemperature} min={0} max={2} step={0.1} />
                      <ParamSlider label="Top P" value={topP} setValue={setTopP} min={0} max={1} step={0.05} />
                      <ParamSlider label="Penalty" value={frequencyPenalty} setValue={setFrequencyPenalty} min={-2} max={2} step={0.1} />
-                     <ParamSlider label="Max Tokens" value={maxTokens} setValue={setMaxTokens} min={100} max={8192} step={100} />
+                     <ParamSlider label="Max Tokens" value={maxTokens} setValue={setMaxTokens} min={100} max={8192} step={16} />
                 </div>
             </CollapsibleCard>
         </div>
@@ -119,11 +120,51 @@ export function SidebarSettings({
 }
 
 function ParamSlider({ label, value, setValue, min, max, step }: any) {
+    const [inputValue, setInputValue] = useState(value.toString());
+    
+    // 同步外部 value 变化到 input
+    useEffect(() => {
+        setInputValue(value.toString());
+    }, [value]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputValue(e.target.value);
+    };
+
+    const handleInputBlur = () => {
+        const numValue = parseFloat(inputValue);
+        if (isNaN(numValue)) {
+            setInputValue(value.toString());
+            return;
+        }
+        
+        // 限制在范围内
+        const clampedValue = Math.max(min, Math.min(max, numValue));
+        setValue(clampedValue);
+        setInputValue(clampedValue.toString());
+    };
+
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
     return (
         <div className="space-y-1.5">
             <div className="flex justify-between items-center text-[10px] text-gray-500">
                 <span>{label}</span>
-                <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded-lg text-gray-700 font-semibold">{value}</span>
+                <input
+                    type="number"
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    onBlur={handleInputBlur}
+                    onKeyDown={handleInputKeyDown}
+                    min={min}
+                    max={max}
+                    step={step}
+                    className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded-lg text-gray-700 font-semibold w-16 text-center border border-transparent focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                />
             </div>
             <input 
                 type="range" min={min} max={max} step={step} value={value} 
