@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 import uuid
+import asyncio
 
 from app.db.session import get_db
 from app.db import models
@@ -50,6 +51,15 @@ def update_lorebook(book_id: str, payload: schemas.LorebookUpdate, db: Session =
     return book
 
 # 批量导入接口
+async def _sync_lore_entries(entries):
+    """后台同步条目到向量存储"""
+    for entry in entries:
+        if entry.enabled and entry.content:
+            try:
+                await vector_store.upsert_lore(entry.id, entry.content, entry.lorebook_id, tags=[entry.keys])
+            except Exception as e:
+                print(f"❌ 向量同步失败 (ID={entry.id}): {e}")
+
 @router.post("/import")
 async def import_whole_lorebook(
     payload: LorebookImportSchema,
@@ -69,6 +79,7 @@ async def import_whole_lorebook(
     db.refresh(new_book)
     
     new_entries = []
+    entries_for_sync = []
     for item in payload.entries:
         raw_keys = item.get("keys", [])
         keys_str = ""
@@ -97,17 +108,17 @@ async def import_whole_lorebook(
         )
         new_entries.append(entry)
         
-        # [Vector Sync] Sync one by one is slow but simple. 
-        # Better: collect then batch. But VectorStore doesn't have batch yet?
-        # upsert_lore calls add, which is batched if we pass list.
-        # But upsert_lore takes single items.
-        # We'll just loop await for now or optimize later.
+        # 收集需要同步到向量存储的条目
         if entry.enabled and entry.content:
-            await vector_store.upsert_lore(entry.id, entry.content, entry.lorebook_id, tags=[keys_str])
+            entries_for_sync.append(entry)
     
     if new_entries:
         db.bulk_save_objects(new_entries)
         db.commit()
+    
+    # 在后台异步处理向量存储同步
+    if entries_for_sync:
+        asyncio.create_task(_sync_lore_entries(entries_for_sync))
     
     return {"id": new_book.id, "name": new_book.name, "count": len(new_entries)}
 

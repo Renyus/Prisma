@@ -62,7 +62,10 @@ export const LorebookService = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(changes),
         });
-        if (!res.ok) throw new Error("Failed to update entry");
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Failed to update entry: ${err}`);
+        }
         return res.json();
     },
 

@@ -66,7 +66,46 @@ export const useLorebookStore = create<LorebookStore>()(
           };
 
           const result = await LorebookService.import(payload);
-          await get().loadFromStorage();
+          
+          // 立即更新本地状态，不需要等待向量存储同步完成
+          const newBook = {
+            id: result.id,
+            name: name,
+            description: json.description || "",
+            enabled: true,
+            entries: Object.values(entries).map((entry: any, index) => ({
+              id: entry.id || `temp-${Date.now()}-${index}`,
+              keys: Array.isArray(entry.keys) ? entry.keys : [],
+              content: entry.content || "",
+              comment: entry.comment || "",
+              enabled: entry.enabled !== false,
+              priority: entry.priority || 10,
+              order: entry.order || 100,
+              probability: entry.probability || 100,
+              useRegex: entry.useRegex || entry.use_regex || false,
+              caseSensitive: entry.caseSensitive || entry.case_sensitive || false,
+              matchWholeWord: entry.matchWholeWord || entry.match_whole_word || false,
+              exclude: entry.exclude || false,
+              constant: entry.constant || false,
+              authorsNote: entry.authorsNote || entry.authors_note || false,
+              position: entry.position || "before_char"
+            }))
+          };
+          
+          set(s => ({
+            lorebooks: [...s.lorebooks, newBook],
+            currentBookId: result.id
+          }));
+          
+          // 在后台加载最新的数据
+          setTimeout(async () => {
+            try {
+              await get().loadFromStorage();
+            } catch (e) {
+              console.error("后台更新失败:", e);
+            }
+          }, 1000);
+          
           return result.id;
 
         } catch (error) {
