@@ -29,7 +29,9 @@ DEFAULT_MAX_HISTORY_MSG = 30
 HARD_MAX_HISTORY_MSG = 100
 DEFAULT_MAX_HISTORY_TOKENS = 2400
 DEFAULT_MODEL = settings.CHAT_MODEL
-MAX_MEMORY_CHARS = 2000 
+# [修改] 既然你有 160k 窗口，直接给记忆分配 30000 字符 (约 1.5w Token)
+# 这样哪怕检索 50-100 条短记忆也能全部塞进去
+MAX_MEMORY_CHARS = 30000
 
 async def _run_compact_history_task(db: Session, session_id: str):
     """
@@ -169,7 +171,7 @@ async def process_chat(
     if not message:
         raise HTTPException(status_code=400, detail="message 不能为空")
 
-    # 3. 历史记录获取与处理
+    # 3. 历史记录获取与处理 已废弃
     history_limit = payload.max_context_messages or DEFAULT_MAX_HISTORY_MSG
     history_limit = max(0, min(history_limit, HARD_MAX_HISTORY_MSG))
     

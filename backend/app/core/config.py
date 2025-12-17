@@ -73,7 +73,7 @@ class Settings:
 
     # --- 2. Utility Module (Summary & Memory) ---
     UTILITY_MODEL: str = os.getenv("UTILITY_MODEL", "Pro/Qwen/Qwen2-7B-Instruct")
-    SUMMARY_HISTORY_THRESHOLD: int = int(os.getenv("SUMMARY_HISTORY_THRESHOLD", "50"))
+    SUMMARY_HISTORY_THRESHOLD: int = int(os.getenv("SUMMARY_HISTORY_THRESHOLD", "0"))
     
     @property
     def UTILITY_CREDENTIALS(self):

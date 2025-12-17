@@ -66,9 +66,14 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
     });
   };
 
+  // 方案 B：更精准的控制
   useEffect(() => {
-    scrollToBottom();
-  }, [messages.length]);
+    // 只有当消息数量变了，或者最后一条消息正在加载/流式传输时，才尝试跟随滚动
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.isLoading || lastMsg?.isStreaming || messages.length > 0) {
+        scrollToBottom();
+    }
+  }, [messages.length, messages[messages.length - 1]?.isStreaming, messages[messages.length - 1]?.isLoading]);
 
   const onSendWrapper = (text: string) => {
       handleSend(text, scrollToBottom);

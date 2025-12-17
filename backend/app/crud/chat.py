@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.db import models as db_models
 
 
-def get_recent_chat_history(db: Session, user_id: str, limit: int = 20):
+def get_recent_chat_history(db: Session, user_id: str, limit: int = 1000):
     """
     获取某个 user_id 最近的对话记录。
     """

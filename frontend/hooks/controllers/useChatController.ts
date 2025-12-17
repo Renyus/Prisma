@@ -95,7 +95,7 @@ export function useChatController() {
                     const { cleanContent } = parseThinkingContent(msg.content);
                     return {
                         id: msg.id,
-                        role: msg.role === "assistant" ? "assistant" : "user",
+                        role: msg.role === "assistant" ? "assistant" : msg.role === "system" ? "system" : "user",
                         content: processMessageContent(cleanContent),
                         isHistory: true,
                         isLoading: false,

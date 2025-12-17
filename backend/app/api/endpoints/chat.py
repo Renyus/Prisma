@@ -116,7 +116,7 @@ def get_chat_history(
                 created_at=msg.created_at,
             )
             for msg in rows
-            if msg.role != "system" # [FIX] 过滤掉系统摘要，不显示在前端
+            # 显示所有消息，包括系统摘要消息
         ]
     )
 

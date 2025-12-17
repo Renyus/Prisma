@@ -101,7 +101,7 @@ export function SidebarSettings({
                        <span>Limit</span>
                        <span className="font-mono">{memoryLimit}</span>
                    </div>
-                   <input type="range" min={1} max={10} value={memoryLimit} onChange={(e)=>setMemoryLimit(parseInt(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                   <input type="range" min={1} max={100} value={memoryLimit} onChange={(e)=>setMemoryLimit(parseInt(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
                 </div>
             </CollapsibleCard>
 

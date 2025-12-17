@@ -38,8 +38,8 @@ export function useSidebarController({ onNewChat }: { onNewChat?: () => void }) 
 
     // Derived Logic
     const currentPreset: "light" | "normal" | "long" = (() => {
-        if (contextMessages <= 8 && contextTokens <= 1500) return "light";
-        if (contextMessages >= 30 || contextTokens >= 3200) return "long";
+        if (contextMessages <= 50 && contextTokens <= 64000) return "light";
+        if (contextMessages >= 500 || contextTokens >= 160000) return "long";
         return "normal";
     })();
 

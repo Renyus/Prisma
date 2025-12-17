@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { loadFromLocalStorage, saveToLocalStorage } from "@/lib/persistence";
 
 const STORAGE_KEY = "chat_settings_v1";
-const DEFAULT_SUMMARY_HISTORY_LIMIT = 20;
+const DEFAULT_SUMMARY_HISTORY_LIMIT = 0;
 
 type SettingsSnapshot = {
   contextMessages: number;
@@ -43,16 +43,18 @@ function persistSettings(settings: SettingsSnapshot) {
 
 const saved = loadSettings();
 const INITIAL_SETTINGS: SettingsSnapshot = {
-  contextMessages: 16, 
-  contextTokens: 2400, 
+  contextMessages: 150, 
+  contextTokens: 16000, 
   summaryHistoryLimit: DEFAULT_SUMMARY_HISTORY_LIMIT,
   temperature: 1.0,
   topP: 1.0,
   frequencyPenalty: 0.0,
-  maxTokens: 2048,
+  // [修改] 默认值从 2048 改为 4096
+  // 这样你每次新建对话，AI 都有足够的空间写完一个大章节
+  maxTokens: 4096,
   
   memoryEnabled: true,
-  memoryLimit: 5,
+  memoryLimit: 45,
 
   // 🔥 [新增] 默认用户名为空
   userName: "",
@@ -70,6 +72,9 @@ interface ChatSettingsState {
   topP: number;
   frequencyPenalty: number;
   maxTokens: number;
+
+  // Model Selection
+  currentModel?: string;
 
   // RAG State
   memoryEnabled: boolean;
@@ -122,19 +127,19 @@ export const useChatSettingsStore = create<ChatSettingsState>((set, get) => ({
   },
 
   setContextMessages: (value) => {
-    const next = Math.max(0, Math.min(50, Math.round(value)));
+    const next = Math.max(0, Math.min(1000, Math.round(value)));
     set({ contextMessages: next });
     persistSettings({ ...get(), contextMessages: next });
   },
 
   setContextTokens: (value) => {
-    const next = Math.max(400, Math.min(6000, Math.round(value)));
+    const next = Math.max(400, Math.min(200000, Math.round(value)));
     set({ contextTokens: next });
     persistSettings({ ...get(), contextTokens: next });
   },
 
   setSummaryHistoryLimit: (value) => {
-    const next = Math.max(5, Math.min(80, Math.round(value)));
+    const next = Math.max(0, Math.min(2000, Math.round(value)));
     set({ summaryHistoryLimit: next });
     persistSettings({ ...get(), summaryHistoryLimit: next });
   },
@@ -158,7 +163,7 @@ export const useChatSettingsStore = create<ChatSettingsState>((set, get) => ({
   },
 
   setMaxTokens: (value) => {
-    const next = Math.max(100, Math.min(8192, Math.round(value)));
+    const next = Math.max(100, Math.min(16384, Math.round(value)));
     set({ maxTokens: next });
     persistSettings({ ...get(), maxTokens: next });
   },
@@ -170,11 +175,11 @@ export const useChatSettingsStore = create<ChatSettingsState>((set, get) => ({
 
   setPreset: (preset) => {
     if (preset === "light") {
-      set({ contextMessages: 6, contextTokens: 1200 });
+      set({ contextMessages: 50, contextTokens: 16000 });
     } else if (preset === "normal") {
-      set({ contextMessages: 16, contextTokens: 2400 });
+      set({ contextMessages: 150, contextTokens: 64000 });
     } else {
-      set({ contextMessages: 40, contextTokens: 4000 });
+      set({ contextMessages: 500, contextTokens: 160000 });
     }
     persistSettings(get());
   },
@@ -185,7 +190,7 @@ export const useChatSettingsStore = create<ChatSettingsState>((set, get) => ({
   },
 
   setMemoryLimit: (limit) => {
-    const next = Math.max(1, Math.min(20, Math.round(limit)));
+    const next = Math.max(1, Math.min(100, Math.round(limit)));
     set({ memoryLimit: next });
     persistSettings({ ...get(), memoryLimit: next });
   },

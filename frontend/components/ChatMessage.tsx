@@ -8,7 +8,7 @@ import { useMemo } from "react";
 import CodeBlock from "./CodeBlock";
 import { BrainCircuit, Info } from "lucide-react"; // 引入图标
 
-export type ChatRole = "user" | "assistant";
+export type ChatRole = "user" | "assistant" | "system";
 
 export type ChatMessageModel = {
   id: string;
@@ -100,6 +100,7 @@ function parseContent(raw: string) {
 
 export default function ChatMessage({ message, onTypingComplete }: ChatMessageProps) {
   const isUser = message.role === "user";
+  const isSystem = message.role === "system";
 
   // 使用 useMemo 解析内容
   const { blocks, text: visibleText } = useMemo(() => {
@@ -108,7 +109,7 @@ export default function ChatMessage({ message, onTypingComplete }: ChatMessagePr
   }, [message.content, isUser]);
 
   const shouldType =
-    !isUser && message.isStreaming && !message.isLoading && !message.isHistory;
+    !isUser && !isSystem && message.isStreaming && !message.isLoading && !message.isHistory;
 
   const displayText = useTypewriter(
     visibleText,
@@ -126,7 +127,7 @@ export default function ChatMessage({ message, onTypingComplete }: ChatMessagePr
         }`}
       >
         {/* --- 动态渲染提取出的所有元数据块 --- */}
-        {!isUser && blocks.length > 0 && (
+        {!isUser && !isSystem && blocks.length > 0 && (
           <details className="group mb-1">
             <summary className="flex items-center gap-2 cursor-pointer list-none text-xs text-gray-400 hover:text-gray-600 transition-colors w-fit select-none">
               <BrainCircuit size={14} />
@@ -163,6 +164,17 @@ export default function ChatMessage({ message, onTypingComplete }: ChatMessagePr
         ) : isUser ? (
           <div className="whitespace-pre-wrap break-words text-[15px] leading-relaxed py-2 text-gray-800 bg-[#fafafa] px-3 rounded-xl shadow-sm">
             {message.content}
+          </div>
+        ) : isSystem ? (
+          // System 消息的特殊样式
+          <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed py-2 px-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 italic">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+              <span className="text-[11px] font-medium text-blue-600 uppercase tracking-wider">系统消息</span>
+            </div>
+            <div className="text-blue-700">
+              {message.content}
+            </div>
           </div>
         ) : (
           <div className="w-full">
