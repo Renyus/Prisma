@@ -2,7 +2,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Book, Plus, Search, Trash2, Pencil, Check, X, Upload, FileJson, Download, Edit3, CheckCircle2 } from "lucide-react";
+import { Library, Plus, Search, Trash2, Pencil, Check, X, Upload, FileJson, Download, Edit3, CheckCircle2 } from "lucide-react";
 import { useMounted } from "@/hooks/useMounted";
 import { useLorebookStore } from "@/store/useLorebookStore"; // Need UpdateEntry logic for nested component
 import { LoreEntry } from "@/types/lorebook";
@@ -40,7 +40,7 @@ export function LorebookPanel({ open, onClose, asPage }: Props) {
         <div className="px-6 pt-6 pb-2 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
              <div className="p-2.5 bg-[#eaf4ff] text-[#0b57d0] rounded-xl">
-               <Book size={24} />
+               <Library size={24} />
              </div>
              <div>
                <h2 className="text-2xl font-medium text-[#1f1f1f]">Lorebook</h2>

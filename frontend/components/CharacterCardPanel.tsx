@@ -2,7 +2,7 @@
 "use client";
 
 import { useRef } from "react";
-import { X, Upload, Search, Tag, Pencil, Trash2, Check, FileJson, UserCircle2 } from "lucide-react";
+import { X, Upload, Search, Tag, Pencil, Trash2, Check, FileJson, Users } from "lucide-react";
 import { useMounted } from "@/hooks/useMounted";
 import { useCharacterPanelController } from "@/hooks/controllers/useCharacterPanelController";
 
@@ -54,7 +54,7 @@ export function CharacterCardPanel({ open, onClose }: Props) {
           <div className="px-6 py-2 shrink-0">
              <div className="bg-[#f0f4f9] rounded-2xl px-4 py-3 flex items-center gap-3">
                 <div className="p-2 bg-white rounded-full text-blue-600 shadow-sm">
-                   <UserCircle2 size={20} />
+                   <Users size={20} />
                 </div>
                 <div>
                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Active</div>
@@ -102,7 +102,7 @@ export function CharacterCardPanel({ open, onClose }: Props) {
           <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-6 space-y-1">
             {filteredCards.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-                    <UserCircle2 size={48} className="mb-2 opacity-20" />
+                    <Users size={48} className="mb-2 opacity-20" />
                     <p>暂无角色卡</p>
                 </div>
             ) : (

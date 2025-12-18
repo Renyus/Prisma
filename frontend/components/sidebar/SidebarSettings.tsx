@@ -52,18 +52,18 @@ export function SidebarSettings({
         <div className="bg-white rounded-[20px] p-4 shadow-sm">
              <div className="flex items-center gap-2 mb-3 text-[11px] font-bold text-[#444746] uppercase tracking-wider opacity-60">
                 <Info size={12} />
-                <span>Session Info</span>
+                <span>当前进程</span>
              </div>
              <div className="space-y-3">
                 <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
                     <span className="text-sm text-[#444746]">角色</span>
-                    <span className="text-sm font-semibold text-[#1F1F1F] truncate flex-1 text-right">{currentCard?.name || "未选择"}</span>
+                    <span className="text-sm  text-[#1F1F1F] truncate flex-1 text-right">{currentCard?.name || "未选择"}</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${currentBook?.enabled!==false ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" : "bg-gray-300"}`}></div>
                     <span className="text-sm text-[#444746]">世界书</span>
-                    <span className="text-sm font-semibold text-[#1F1F1F] truncate flex-1 text-right">{currentBook?.name || "未加载"}</span>
+                    <span className="text-sm  text-[#1F1F1F] truncate flex-1 text-right">{currentBook?.name || "未加载"}</span>
                 </div>
              </div>
         </div>

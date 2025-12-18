@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Plus, MessageSquareX, Trash2, Download, Upload, Menu, PanelLeftClose, PanelLeft, Loader2 } from "lucide-react";
+import { Plus, MessageCircleX, MessageCircleOff, ArrowDown, ArrowUp, ArrowRightToLine, ArrowLeftToLine, Loader } from "lucide-react";
 
 interface SidebarHeaderProps {
   collapsed: boolean;
@@ -34,7 +34,7 @@ export function SidebarHeader({
                     onClick={toggleCollapse}
                     className="p-2 rounded-full hover:bg-gray-200/50 text-[#444746] transition-colors"
                 >
-                    {collapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
+                    {collapsed ? <ArrowRightToLine size={20} /> : <ArrowLeftToLine size={20} />}
                 </button>
 
                 {/* New Chat 按钮：响应式变化 */}
@@ -60,15 +60,15 @@ export function SidebarHeader({
             {/* 操作按钮组：仅展开时显示 */}
             {!collapsed && (
                 <div className="grid grid-cols-4 gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <ActionButton icon={<MessageSquareX size={16}/>} label="清空" onClick={() => onClearHistory("session")} color="hover:text-red-600 hover:bg-red-50" />
-                    <ActionButton icon={<Trash2 size={16}/>} label="删除" onClick={() => onClearHistory("card")} color="hover:text-red-600 hover:bg-red-50" />
+                    <ActionButton icon={<MessageCircleX size={16}/>} label="清空" onClick={() => onClearHistory("session")} color="hover:text-red-600 hover:bg-red-50" />
+                    <ActionButton icon={<MessageCircleOff size={16}/>} label="删除" onClick={() => onClearHistory("card")} color="hover:text-red-600 hover:bg-red-50" />
                     <ActionButton 
-                        icon={isExporting ? <Loader2 size={16} className="animate-spin text-blue-600" /> : <Download size={16}/>} 
+                        icon={isExporting ? <Loader size={16} className="animate-spin text-blue-600" /> : <ArrowDown size={16}/>} 
                         label={isExporting ? "导出中" : "导出"} 
                         onClick={onExport} 
                         disabled={isExporting} // 禁用点击
                     />
-                    <ActionButton icon={<Upload size={16}/>} label="导入" onClick={() => fileInputRef.current?.click()} />
+                    <ActionButton icon={<ArrowUp size={16}/>} label="导入" onClick={() => fileInputRef.current?.click()} />
                 </div>
             )}
             

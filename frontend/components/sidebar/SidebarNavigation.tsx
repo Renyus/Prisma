@@ -1,12 +1,12 @@
 "use client";
 
-import { UserCircle2, Book, Sparkles } from "lucide-react";
+import { Users, Library, Settings2,  } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 
 const routeItems = [
-  { label: "角色卡",  icon: UserCircle2, href: "/character-setup" },
-  { label: "世界书",   icon: Book,        href: "/lorebook" },
-  { label: "系统微调",  icon: Sparkles,    href: "/prompts" }, 
+  { label: "角色卡",  icon: Users, href: "/character-setup" },
+  { label: "世界书",   icon: Library,        href: "/lorebook" },
+  { label: "参数卡",  icon: Settings2,    href: "/prompts" }, 
 ];
 
 interface SidebarNavigationProps {

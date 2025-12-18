@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, Save, Info, ChevronDown, CheckCircle2, X } from "lucide-react";
+import { Settings2, Save, Info, ChevronDown, CheckCircle2, X } from "lucide-react";
 import { usePromptPanelController } from "@/hooks/controllers/usePromptPanelController";
 import type { PromptModule } from "@/services/PromptService";
 
@@ -34,11 +34,11 @@ export default function PromptPanel({ open, onClose }: PromptPanelProps) {
         {/* Header 区域 */}
         <div className="px-6 pt-6 pb-2 flex items-center gap-3 shrink-0">
             <div className="p-2.5 bg-[#f3e8ff] text-[#9333ea] rounded-xl">
-               <Sparkles size={24} />
+               <Settings2 size={24} />
             </div>
             <div>
-               <h2 className="text-2xl font-medium text-[#1f1f1f]">System Prompts</h2>
-               <p className="text-sm text-gray-500">Global instructions for the AI model</p>
+               <h2 className="text-2xl font-medium text-[#1f1f1f]">参数调整</h2>
+               <p className="text-sm text-gray-500">模型提示词全局参数/破甲/叙事质量/COT控制/视角控制</p>
             </div>
         </div>
 
@@ -47,12 +47,11 @@ export default function PromptPanel({ open, onClose }: PromptPanelProps) {
            <div className="bg-[#f0f4f9] rounded-2xl p-4 flex items-start gap-3 text-sm text-[#444746]">
               <Info className="w-5 h-5 text-[#0b57d0] shrink-0 mt-0.5" />
               <div className="leading-relaxed">
-                 <span className="font-medium text-[#1f1f1f] block mb-1">How it works</span>
-                 Modules are injected into the context based on their <strong>Position</strong> (Weight).
+                 <span className="font-medium text-[#1f1f1f] block mb-1">运行机制</span>
+                 模块会按照 <strong>位置权重</strong> 插入提示词
                  <br />
                  <span className="opacity-80">
-                   Larger number = Lower in context (Higher priority). 
-                   Recommended: Jailbreak (90) → CoT (100).
+                 权重值越大，位置越靠近底部（生效优先级越高）。 推荐配置：破甲 (90) → CoT (100)。
                  </span>
               </div>
            </div>
