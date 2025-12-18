@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 from app.db import models as db_models
 from app.schemas.lorebook import LorebookCreate, LorebookUpdate, LoreItemCreate, LoreItemUpdate
+from typing import List, Dict
 
 # --- Lorebook CRUD ---
 

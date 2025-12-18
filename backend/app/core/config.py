@@ -163,7 +163,36 @@ class Settings:
     PROJECT_NAME: str = "SAKURARPG Backend"
     
     # [重构] 使用安全的环境变量获取函数
-    DATABASE_URL: str = get_env_path("DATABASE_URL", f"sqlite:///{get_base_data_path()}/sakura.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{get_base_data_path()}/sakura.db")
+    
+    # 确保数据库URL格式正确
+    @property
+    def DATABASE_URL_SAFE(self) -> str:
+        """确保数据库URL格式正确"""
+        url = self.DATABASE_URL
+        
+        # 如果是相对路径的SQLite URL，转换为绝对路径
+        if url.startswith("sqlite:///./"):
+            # 提取相对路径部分
+            relative_path = url.replace("sqlite:///", "")
+            # 转换为绝对路径
+            abs_db_path = BASE_DIR / relative_path
+            abs_db_path = abs_db_path.resolve()
+            # 转换为正斜杠并确保格式正确
+            db_path_str = str(abs_db_path).replace('\\', '/')
+            return f"sqlite:///{db_path_str}"
+        elif not url.startswith("sqlite://"):
+            # 如果不是SQLite URL，假设是文件路径，转换为SQLite URL
+            path = Path(url)
+            if not path.is_absolute():
+                path = BASE_DIR / path
+                path = path.resolve()
+            # 转换为正斜杠并确保格式正确
+            db_path_str = str(path).replace('\\', '/')
+            return f"sqlite:///{db_path_str}"
+        else:
+            # 已经是SQLite URL，确保路径使用正斜杠
+            return url.replace('\\', '/')
 
     # --- 全局基底 ---
     GLOBAL_LLM_KEY: str = os.getenv("GLOBAL_LLM_KEY", "")

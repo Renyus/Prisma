@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, Iterable, List, Set
 
-from app.services.prompt_builder import _estimate_tokens
+from app.utils.token_utils import _estimate_tokens
 
 # --- 配置常量 ---
 # 递归最大深度（防止死循环或性能损耗）
