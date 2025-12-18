@@ -10,7 +10,7 @@ from fastapi import HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.llm import call_llm, call_summary_llm
+from app.core.llm import call_llm, call_summary_llm, SUMMARY_SYSTEM_PROMPT
 from app.core.vector_store import vector_store
 from app.db import models as db_models
 from app.schemas.chat import ChatRequest, ChatResponse
@@ -34,6 +34,8 @@ DEFAULT_MODEL = settings.CHAT_MODEL
 # 这样哪怕检索 50-100 条短记忆也能全部塞进去
 MAX_MEMORY_TOKENS = 15000
 
+# 摘要系统提示词已从 llm.py 导入，使用高级版本
+
 async def _run_compact_history_task(session_id: str):
     """
     后台压缩历史记录任务
@@ -41,13 +43,28 @@ async def _run_compact_history_task(session_id: str):
     """
     with SessionLocal() as db:
         try:
-            await _maybe_compact_history(db, session_id)
+            # 从 session_id 中提取 card_id，然后查询真实角色名
+            character_name = "角色"  # 默认值
+            try:
+                # session_id 格式: {user_id}::card::{card_id}
+                parts = session_id.split("::card::")
+                if len(parts) == 2:
+                    card_id = parts[1]
+                    # 查询角色信息
+                    card = db.query(db_models.CharacterCard).filter(db_models.CharacterCard.id == card_id).first()
+                    if card and card.name:
+                        character_name = card.name
+                        logger.info(f"[{session_id}] 获取到真实角色名: {character_name}")
+            except Exception as e:
+                logger.warning(f"[{session_id}] 获取角色名失败，使用默认: {e}")
+            
+            await _maybe_compact_history(db, session_id, character_name)
         except Exception as e:
             logger.error(f"后台摘要任务失败: {e}")
         finally:
             db.close()
 
-async def _maybe_compact_history(db: Session, session_id: str) -> None:
+async def _maybe_compact_history(db: Session, session_id: str, character_name: str = "角色") -> None:
     """
     基于 Token 数量的历史记录压缩
     当历史记录总 Token 超过模型窗口的 75% 时触发压缩
@@ -119,21 +136,39 @@ async def _maybe_compact_history(db: Session, session_id: str) -> None:
         logger.warning(f"[{session_id}] 没有找到合适的压缩消息")
         return
 
-    # 准备摘要源数据
-    summary_sources = [
-        {"role": msg.role, "content": msg.content}
-        for msg in messages_to_compress
-        if msg.content
-    ]
+    # 2. 识别出最新的一条旧摘要 (如果有)
+    old_summary = ""
+    messages_to_summarize = []
     
-    if not summary_sources:
+    for msg in messages_to_compress:
+        if msg.role == "system" and "【历史摘要】" in msg.content:
+            old_summary = msg.content.replace("【历史摘要】\n", "")
+        else:
+            messages_to_summarize.append({"role": msg.role, "content": msg.content})
+
+    # 3. 构造增强型总结请求
+    summary_input = []
+    if old_summary:
+        summary_input.append({"role": "system", "content": f"【过往剧情回顾】:\n{old_summary}"})
+    
+    summary_input.append({"role": "user", "content": "【新增对话片段】:\n" + 
+                         "\n".join([f"{m['role']}: {m['content']}" for m in messages_to_summarize])})
+
+    if not summary_input:
         return
 
     try:
-        # 生成摘要
-        summary_text = (await call_summary_llm(summary_sources)).strip()
+        # 生成滚动式摘要
+        summary_text = (await call_llm(
+            model=getattr(settings, "UTILITY_MODEL", DEFAULT_MODEL), 
+            messages=[
+                {"role": "system", "content": SUMMARY_SYSTEM_PROMPT.format(char_name=character_name)},
+                *summary_input
+            ],
+            temperature=0.1
+        ))["content"].strip()
     except Exception as exc:
-        logger.warning(f"[{session_id}] Summary 压缩失败: {exc}")
+        logger.warning(f"[{session_id}] Summary 滚动压缩失败: {exc}")
         return
 
     if not summary_text:

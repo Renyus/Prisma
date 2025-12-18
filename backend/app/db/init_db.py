@@ -11,12 +11,13 @@ DEFAULT_PROMPT_MODULES = [
         "name": "叙事质量控制",
         "is_enabled": True,
         "position": 10,
-        "content": """[Narrative Quality Assurance Standards]
-1. **No Clichés**: Avoid generic phrases like "shivers down spine", "smirked", or "eyes darkened" unless necessary. Use unique sensory details.
-2. **Show, Don't Tell**: Do not label emotions (e.g., "She felt sad"). Describe the physical reaction (e.g., "She stared at the cold tea, her fingers trembling").
-3. **No Repetition**: Do not repeat the user's last action or dialogue. Assume it has happened and write the **immediate consequence**.
-4. **Pacing**: Vary sentence length. Use short sentences for action/tension, long sentences for atmosphere.
-5. **Logic**: Ensure character reactions are proportional to the context."""
+        "content": """[Narrative Pacing & Quality Guidelines]
+1. **Micro-Focus (Crucial)**: Focus ONLY on the immediate moment. Describe the sensory details of the *current* action (seconds/minutes), not the outcome of the entire event. Do not summarize time skips (e.g., avoid "After a while...", "Later that day...").
+2. **One Beat at a Time**: Advance the plot by only ONE interactive step. If the user asks a question, answer it and wait. If the user attacks, describe the enemy's dodge or hit, then STOP. Never resolve a conflict in a single turn.
+3. **Show, Don't Tell**: Do not label emotions (e.g., "She felt sad"). Describe physical tells (e.g., "She stared at the cold tea, fingers trembling").
+4. **No Repetition, But React**: Do not repeat the user's text. Instead, strictly describe the character's *immediate visceral reaction* to it. 
+5. **No God-Moding**: Never write the user's actions, feelings, or dialogue. Stop writing immediately when the user needs to respond.
+6. **No Clichés**: Avoid generic phrases ("shivers down spine", "smirked"). Use unique, situation-specific sensory metaphors."""
     },
     {
         "id": "perspective",

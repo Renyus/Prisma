@@ -56,6 +56,10 @@ async def analyze_chat_for_memory(
     """
     后台任务：分析对话并提取记忆。
     """
+    # 如果内容包含摘要标签，直接跳过，不作为长期记忆提取来源
+    if "【历史摘要】" in user_content or "【历史摘要】" in ai_content:
+        return
+    
     # 长度过滤
     if len(user_content) < 3 and len(ai_content) < 5:
         return

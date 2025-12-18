@@ -53,6 +53,9 @@ def standardize_usage(raw_usage: Dict[str, Any], model: str) -> Dict[str, int]:
     Returns:
         Dict[str, int]: 标准化格式 {"cacheHit": int, "cacheMiss": int, "total": int}
     """
+    
+
+
     # 默认值
     standardized = {
         "cacheHit": 0,
@@ -137,7 +140,29 @@ def standardize_usage(raw_usage: Dict[str, Any], model: str) -> Dict[str, int]:
     
     return standardized
 
-SUMMARY_SYSTEM_PROMPT = """你是一个高效的对话总结器。请仔细阅读给定的历史对话，并用简洁的语言提炼出核心信息、关键事件和用户的主要目标。你的总结将作为未来对话的上下文。请直接返回总结文本，不要包含任何前缀或解释。"""
+SUMMARY_SYSTEM_PROMPT = """你是一个专业的 RPG 叙事档案员。
+你的任务是阅读【过往剧情回顾】和【新增对话片段】，生成一份更新后的【当前叙事档案】。
+
+请严格按以下格式输出，确保信息的连续性：
+
+【核心剧情摘要】
+(用一句话概括当前所处的阶段和发生的重大事件)
+
+【人物关系与状态】
+- 主体状态: (如：Renyus 目前左臂受轻伤，灵力盈满)
+- 关系动态: (如：{char_name} 对用户产生了一丝好奇，态度从冷淡转为审视)
+
+【关键线索与道具】
+- 关键物品: (如：获取了青铜钥匙、丢失了地图)
+- 未完待续: (如：正准备前往后山禁地，尚未告知师父真相)
+
+【环境上下文】
+- 时间/地点: (如：黄昏、破旧的道观内)
+
+注意：
+1. 保持简洁，剔除无意义的寒暄。
+2. 如果【过往剧情回顾】中提到的重要信息尚未解决，必须保留到新档案中。
+3. 直接返回格式化后的文本。"""
 
 async def call_llm(
     model: str, 
@@ -156,11 +181,12 @@ async def call_llm(
     )
     return result
 
-async def call_summary_llm(history: List[Dict[str, str]]) -> str:
+async def call_summary_llm(history: List[Dict[str, str]], char_name: str = "角色") -> str:
     """调用 Utility 模型进行总结"""
     history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history])
     messages = [
-        {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+        # ✅ 使用 .format 填充占位符
+        {"role": "system", "content": SUMMARY_SYSTEM_PROMPT.format(char_name=char_name)}, 
         {"role": "user", "content": f"请总结以下对话历史：\n---\n{history_text}"},
     ]
     try:
@@ -225,6 +251,11 @@ async def call_chat_completions(
     
     # 提取并标准化 usage 数据
     raw_usage = data.get("usage", {})
+    # 👇👇👇 【新增调试打印】 👇👇👇
+    print("\n" + ">" * 20 + " [USAGE DEBUG] " + "<" * 20)
+    print(f"📦 模型: {model}")
+    print(f"🧾 原始 Usage: {json.dumps(raw_usage, indent=2)}") 
+    # 👆👆👆 这样我们就能看到 API 到底给了什么字段
     standardized_usage = standardize_usage(raw_usage, model)
     
     # 返回结构化数据
