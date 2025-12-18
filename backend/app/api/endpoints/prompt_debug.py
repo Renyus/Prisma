@@ -54,7 +54,6 @@ async def debug_prompt(payload: PromptDebugRequest, db: Session = Depends(get_db
         lore_entries=payload.lore or [],
         history=history,
         user_message=message,
-        is_first_user_message=is_first_user_message,
         max_history_tokens=max_history_tokens,
     )
 

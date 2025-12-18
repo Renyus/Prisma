@@ -1,4 +1,3 @@
-//
 // =============================
 //  通用类型定义（全局使用）
 // =============================
@@ -63,6 +62,24 @@ export interface TavernLoreEntry {
   probability?: number;
   weight?: number;
   cooldown?: number;
+}
+
+//
+// =============================
+//  Token 统计类型
+// =============================
+//
+
+export interface TokenStats {
+  system: number;  // 系统提示词 token 数
+  user: number;    // 用户输入 token 数
+  history: number; // 历史记录 token 数
+  budget_left: number;  // 剩余预算
+  model_limits: Record<string, any>;  // 模型限制信息
+  lore_budget: number;  // 世界书预算
+  estimation_method: string;  // 估算方法
+  smart_context_used: boolean;  // 是否使用智能上下文
+  smart_context_tokens: number;  // 智能上下文 token 数
 }
 
 //
@@ -145,3 +162,16 @@ export interface LLMCallResult {
   rawText: string;
 }
 
+//
+// =============================
+//  触发的世界书条目类型
+// =============================
+//
+
+export interface TriggeredLoreEntry {
+  id: string;
+  content: string;
+  type: "vector" | "keyword";  // 命中类型
+  title?: string;              // 条目标题
+  priority?: number;           // 优先级
+}

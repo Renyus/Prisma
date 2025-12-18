@@ -4,28 +4,48 @@ from typing import Any, Dict, List, Optional
 import re
 from app.services.role_service import build_role_system_prompt
 from app.services.lorebook_service import select_triggered_lore_entries, build_lore_blocks
+from app.core.config import settings
 
-# 世界书基础预算，可根据 RAG 密度调整
-LORE_TOKEN_BUDGET = 1500 
+# 尝试导入 tiktoken 作为可选的精确 token 估算器
+try:
+    import tiktoken
+    TIKTOKEN_AVAILABLE = True
+except ImportError:
+    TIKTOKEN_AVAILABLE = False
 
 def _estimate_tokens(text: str) -> int:
     """
-    更安全的 Token 估算函数，专门针对 CJK 优化。
+    优化的 Token 估算函数，支持多种估算策略：
+    1. tiktoken 精确估算（如果可用）
+    2. 改进的手动估算（作为回退）
+    
     策略：
     - CJK 字符及全角符号: 按 2 token 计算 (安全高估，防止溢出)
-    - 其他 ASCII 字符: 按 0.3 token 计算 (英文 word 约为 3-4 字符)
+    - 其他 ASCII 字符: 按 0.5 token 计算 (更保守，防止复杂标点符号下溢出)
     - 额外加上 buffer
     """
     if not text:
         return 0
     
+    # 策略 1: 尝试使用 tiktoken 进行精确估算
+    if TIKTOKEN_AVAILABLE:
+        try:
+            # 使用 cl100k_base 编码器（适用于 GPT-4, DeepSeek 等）
+            encoder = tiktoken.get_encoding("cl100k_base")
+            tokens = encoder.encode(text)
+            return len(tokens)
+        except Exception:
+            # 如果 tiktoken 失败，回退到手动估算
+            pass
+    
+    # 策略 2: 改进的手动估算（回退方案）
     # 简单的正则匹配 CJK 范围
     cjk_pattern = re.compile(r'[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af\uff00-\uffef]')
     cjk_count = len(cjk_pattern.findall(text))
     ascii_count = len(text) - cjk_count
     
-    # 计算估算值
-    estimated = (cjk_count * 2.0) + (ascii_count * 0.35)
+    # 使用更保守的估算：ASCII 字符按 0.5 token 计算
+    estimated = (cjk_count * 2.0) + (ascii_count * 0.5)
     return int(estimated) + 1
 
 def _truncate_history(history: List[Dict[str, str]], remaining_budget: int, max_single_msg_chars: int = 10000) -> List[Dict[str, str]]:
@@ -66,8 +86,6 @@ def build_normalized_prompt(
     user_message: str,
     system_modules: List[str] = None, 
     max_history_tokens: int = 4000, # 这只是一个软上限
-    max_model_tokens: int = 4096,   # 这是模型的物理硬上限
-    max_output_tokens: int = 1024,  # [新增] 必须预留给回复的空间
     router_decision: Optional[Dict[str, Any]] = None,
     memories: List[str] = None, 
     history_summary: str = None,
@@ -78,12 +96,24 @@ def build_normalized_prompt(
     if memories is None: memories = []
     if system_modules is None: system_modules = []
     
-    # 0. 安全计算可用 Input 空间
-    # 必须预留 Output 空间，并扣除少量 buffer (50) 防止估算误差
-    SAFE_TOTAL_INPUT = max_model_tokens - max_output_tokens - 50
+    # 0. 动态获取模型限制参数
+    model_limits = settings.get_model_limit(settings.CHAT_MODEL)
+    context_window = model_limits["context_window"]
+    max_output = model_limits["max_output"]
+    safety_buffer = model_limits["safety_buffer"]
+    
+    # 动态计算世界书预算 - 根据总窗口的20%动态分配
+    # 防止在小模型上世界书挤占太多空间，或在大模型上世界书利用不足
+    LORE_TOKEN_BUDGET = int(context_window * 0.2)
+    # 设置最小和最大边界，确保预算合理
+    LORE_TOKEN_BUDGET = max(500, min(LORE_TOKEN_BUDGET, 3000))
+    
+    # 计算可用的输入空间
+    # 必须预留 Output 空间，并扣除安全缓冲区防止估算误差
+    SAFE_TOTAL_INPUT = context_window - max_output - safety_buffer
     if SAFE_TOTAL_INPUT <= 0:
         # 极端情况保护
-        SAFE_TOTAL_INPUT = 2000 
+        SAFE_TOTAL_INPUT = 2000
     
     use_lorebook = router_decision.get("use_lorebook", True) if router_decision else True
     
@@ -156,22 +186,51 @@ def build_normalized_prompt(
     if remaining_budget < 0:
         remaining_budget = 0 
 
+    # 弹性保护机制：检查 System 模块是否过于臃肿
+    MIN_HISTORY_TOKENS = 500  # 最小历史记录保留阈值
+    if remaining_budget < MIN_HISTORY_TOKENS:
+        import warnings
+        warnings.warn(
+            f"System Prompt 过于臃肿！剩余预算仅剩 {remaining_budget} tokens，"
+            f"低于最小阈值 {MIN_HISTORY_TOKENS} tokens。"
+            f"建议优化角色卡或世界书内容。"
+            f"当前 System tokens: {system_tokens}, User tokens: {user_tokens}, "
+            f"总可用输入空间: {SAFE_TOTAL_INPUT}",
+            UserWarning
+        )
+
     # 取 "配置的历史上限" 和 "实际剩余空间" 的较小值
     final_history_budget = min(max_history_tokens, remaining_budget)
 
     history_to_use = history or []
     
-    # 如果有 Refined History (例如 Smart Context)，在这里替换
+    # 完善智能上下文 (Smart Context) 逻辑
     refined_history_summary = router_decision.get("refine_history") if router_decision else ""
+    smart_context_used = False
+    
     if refined_history_summary:
-        # 如果使用了 Smart Context，通常意味着我们想用摘要代替部分旧历史
-        # 这里可以根据策略调整，目前简单替换
-        # history_to_use = ... 
-        pass 
+        # 计算 refined_history 的 token 数（包含 ChatML 格式开销）
+        refined_tokens = _estimate_tokens(refined_history_summary) + 4
+        
+        # 从预算中扣除 refined_history 的空间
+        adjusted_budget = final_history_budget - refined_tokens
+        if adjusted_budget >= 0:
+            # 预算充足，使用 Smart Context
+            final_history_budget = adjusted_budget
+            smart_context_used = True
+        # 如果预算不足，则忽略 refined_history，使用原有逻辑
 
     trimmed_history = _truncate_history(history_to_use, final_history_budget)
 
     messages: List[Dict[str, str]] = []
+    
+    # 如果使用了 Smart Context，将 refined_history 插入到顶部
+    if smart_context_used:
+        messages.append({
+            "role": "system", 
+            "content": f"【Smart Context Summary】\n{refined_history_summary}"
+        })
+    
     messages.extend(trimmed_history)
     messages.append({"role": "user", "content": final_user})
 
@@ -184,6 +243,15 @@ def build_normalized_prompt(
             "system": system_tokens,
             "user": user_tokens,
             "history": len(trimmed_history),
-            "budget_left": remaining_budget
+            "budget_left": remaining_budget,
+            "model_limits": {
+                "context_window": context_window,
+                "max_output": max_output,
+                "safety_buffer": safety_buffer
+            },
+            "lore_budget": LORE_TOKEN_BUDGET,
+            "estimation_method": "tiktoken" if TIKTOKEN_AVAILABLE else "manual_conservative",
+            "smart_context_used": smart_context_used,
+            "smart_context_tokens": _estimate_tokens(refined_history_summary) + 4 if smart_context_used else 0
         }
     }

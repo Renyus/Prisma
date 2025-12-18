@@ -1,5 +1,5 @@
 import { APP_CONFIG } from "@/config/constants";
-import type { ChatRole } from "@/lib/types";
+import type { ChatRole, TokenStats, TriggeredLoreEntry } from "@/lib/types";
 
 export interface MemoryConfig {
   enabled: boolean;
@@ -48,6 +48,8 @@ export interface ChatResponse {
     systemPreview?: string;
     usedLore?: any;
     loreBlock?: any;
+    triggered_entries?: TriggeredLoreEntry[];  // 新增触发的世界书条目
+    tokenStats?: TokenStats;  // 新增 token 统计信息
 }
 
 export const ChatService = {

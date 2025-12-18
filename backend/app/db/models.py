@@ -43,6 +43,7 @@ class ChatMessage(Base):
     character_id = Column(String, ForeignKey("character_cards.id"), nullable=True)
     role = Column(String)
     content = Column(Text)
+    is_archived = Column(Boolean, default=False, index=True)  # 新增：标记消息是否已归档
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     character = relationship("CharacterCard", back_populates="messages")
 

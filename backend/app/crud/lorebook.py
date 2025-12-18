@@ -197,3 +197,43 @@ def get_active_lore_entries(db: Session, user_id: str):
         result.append(entry_dict)
     
     return result
+
+# --- 🔥 [新增] 关键词匹配检索 ---
+def search_lore_entries_by_keywords(active_entries: List[Dict], query_text: str, limit: int = 10):
+    """
+    基于关键词的简单匹配检索
+    直接在已获取的条目列表中进行匹配，避免重复数据库查询
+    
+    Args:
+        active_entries: 已获取的活跃条目列表
+        query_text: 查询文本
+        limit: 返回结果数量限制
+    
+    Returns:
+        匹配的完整条目对象列表
+    """
+    if not active_entries:
+        return []
+    
+    matched_entries = []
+    query_lower = query_text.lower()
+    
+    for entry in active_entries:
+        keywords = entry.get("keywords", [])
+        if not keywords:
+            continue
+            
+        # 检查是否有关键词匹配
+        for keyword in keywords:
+            if not keyword.strip():
+                continue
+                
+            keyword_lower = keyword.lower()
+            
+            # 简单的包含匹配（可以后续扩展为正则匹配）
+            if keyword_lower in query_lower:
+                matched_entries.append(entry)
+                break  # 找到一个匹配就足够了
+    
+    # 返回限制数量的结果
+    return matched_entries[:limit]

@@ -121,6 +121,55 @@ def get_chat_history(
     )
 
 
+@router.get("/archived", response_model=ChatHistoryResponse)
+def get_archived_messages(
+    user_id: str,
+    character_id: Optional[str] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """
+    获取指定会话的已归档消息列表。
+    """
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id 不能为空")
+
+    card_id = character_id or "default"
+    session_id = f"{user_id}::card::{card_id}"
+    rows = chat_crud.get_archived_chat_history(db, session_id, limit=limit)
+    return ChatHistoryResponse(
+        messages=[
+            ChatHistoryMessage(
+                id=msg.id,
+                role=msg.role,
+                content=msg.content,
+                created_at=msg.created_at,
+            )
+            for msg in rows
+        ]
+    )
+
+
+@router.post("/unarchive")
+async def unarchive_messages(
+    message_ids: list[str],
+    db: Session = Depends(get_db),
+):
+    """
+    批量取消归档消息。
+    """
+    if not message_ids:
+        raise HTTPException(status_code=400, detail="message_ids 不能为空")
+
+    try:
+        unarchived_count = chat_crud.unarchive_chat_messages_by_ids(db, message_ids)
+        db.commit()
+        return {"unarchived": unarchived_count}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"取消归档失败: {e}") from e
+
+
 @router.get("/export", response_model=ChatExportPayload)
 async def export_chat(
     user_id: str,

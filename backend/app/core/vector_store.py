@@ -230,9 +230,10 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Lore delete 失败: {e}")
 
-    async def search_lore(self, query: str, active_book_ids: List[str], limit: int = 5) -> List[str]:
+    async def search_lore(self, query: str, active_book_ids: List[str], limit: int = 5, all_entries: List[Dict] = None) -> List[Dict]:
         """
         在指定的 active_book_ids 范围内搜索相关条目
+        返回完整的条目对象列表，而不是仅ID
         """
         if not self.is_available() or not active_book_ids:
             return []
@@ -256,9 +257,21 @@ class VectorStore:
             )
             
             found_ids = results["ids"][0] if results and results["ids"] else []
-            if found_ids:
-                logger.info(f"📘 [Lore检索] 命中 {len(found_ids)} 条 (Query: {query[:10]}...)")
+            if not found_ids:
+                return []
             
+            logger.info(f"📘 [Lore检索] 向量命中 {len(found_ids)} 条 (Query: {query[:10]}...)")
+            
+            # 如果提供了all_entries，直接从其中匹配返回完整对象
+            if all_entries:
+                matched_entries = []
+                found_ids_set = set(found_ids)
+                for entry in all_entries:
+                    if str(entry.get("id")) in found_ids_set:
+                        matched_entries.append(entry)
+                return matched_entries
+            
+            # 否则只返回ID列表（向后兼容）
             return found_ids
 
         except Exception as e:

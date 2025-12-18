@@ -1,4 +1,3 @@
-// frontend/components/ChatArea.tsx
 "use client";
 
 import {
@@ -7,13 +6,18 @@ import {
   useRef,
   useEffect,
   useState,
+  useCallback,
 } from "react";
-import { MessageSquareDashed, Check } from "lucide-react";
+import { MessageSquareDashed, Check, ChevronDown } from "lucide-react";
 
 import ChatInputBar from "./ChatInputBar";
 import ChatMessage from "./ChatMessage";
+import TokenStatsPanel from "./TokenStatsPanel";
+import { Badge } from "./ui/Badge";
+import { Popover, PopoverContent } from "./ui/Popover";
 import { useMounted } from "@/hooks/useMounted";
 import { useChatController } from "@/hooks/controllers/useChatController";
+import type { TriggeredLoreEntry } from "@/lib/types";
 
 export type ChatAreaHandle = {
   startNewChat: () => void;
@@ -28,12 +32,18 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
   // --- UI State (Visual Only) ---
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
 
+  // --- Smart Scroll State ---
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
+
   // --- Logic Controller ---
   const {
     // Data
-    messages, isSending, lastUsedLore, availableModels, activeModelInfo,
+    messages, isSending, lastUsedLore, triggeredEntries, availableModels, activeModelInfo,
     title, displayedModelName, displayedVendorName, isOnline,
-    userName, currentModel, currentCard,
+    userName, currentModel, currentCard, tokenStats,
     // Actions
     setUserName, setCurrentModel, handleSend, handleTypingFinished,
     startNewChat, reloadHistory
@@ -56,6 +66,76 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Smart Scroll Detection
+  const checkScrollPosition = useCallback(() => {
+    if (!listRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const threshold = 100; // 100px threshold for "near bottom"
+    
+    setIsNearBottom(distanceFromBottom <= threshold);
+  }, []);
+
+  // Handle scroll events
+  useEffect(() => {
+    const listElement = listRef.current;
+    if (!listElement) return;
+
+    let scrollTimeout: NodeJS.Timeout;
+    
+    const handleScroll = () => {
+      setIsUserScrolling(true);
+      checkScrollPosition();
+      
+      // Clear existing timeout
+      clearTimeout(scrollTimeout);
+      
+      // Set new timeout to detect when user stops scrolling
+      scrollTimeout = setTimeout(() => {
+        setIsUserScrolling(false);
+      }, 150);
+    };
+
+    listElement.addEventListener("scroll", handleScroll, { passive: true });
+    
+    // Initial check
+    checkScrollPosition();
+    
+    return () => {
+      listElement.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, [checkScrollPosition]);
+
+  // Smart Auto Scroll Logic
+  useEffect(() => {
+    // Check if new messages were added
+    if (messages.length > lastMessageCount) {
+      const newMessagesCount = messages.length - lastMessageCount;
+      setLastMessageCount(messages.length);
+      
+      // If user is near bottom or not actively scrolling, auto-scroll
+      if (isNearBottom || !isUserScrolling) {
+        scrollToBottom();
+        setHasNewMessages(false);
+      } else {
+        // User is viewing history, show new message indicator
+        setHasNewMessages(true);
+      }
+    }
+  }, [messages.length, isNearBottom, isUserScrolling, lastMessageCount]);
+
+  // Auto Scroll for streaming/loading messages
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.isLoading || lastMsg?.isStreaming) {
+      if (isNearBottom || !isUserScrolling) {
+        scrollToBottom();
+      }
+    }
+  }, [messages[messages.length - 1]?.isStreaming, messages[messages.length - 1]?.isLoading, isNearBottom, isUserScrolling]);
+
   // Auto Scroll
   const scrollToBottom = () => {
     if (!listRef.current) return;
@@ -66,14 +146,11 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
     });
   };
 
-  // 方案 B：更精准的控制
-  useEffect(() => {
-    // 只有当消息数量变了，或者最后一条消息正在加载/流式传输时，才尝试跟随滚动
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg?.isLoading || lastMsg?.isStreaming || messages.length > 0) {
-        scrollToBottom();
-    }
-  }, [messages.length, messages[messages.length - 1]?.isStreaming, messages[messages.length - 1]?.isLoading]);
+  // Handle new message button click
+  const handleNewMessageClick = () => {
+    scrollToBottom();
+    setHasNewMessages(false);
+  };
 
   const onSendWrapper = (text: string) => {
       handleSend(text, scrollToBottom);
@@ -209,10 +286,24 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
       .animate-shimmer {
         animation: shimmer 1.5s infinite linear;
       }
+      @keyframes bounce {
+        0%, 20%, 53%, 80%, 100% {
+          transform: translate3d(0,0,0);
+        }
+        40%, 43% {
+          transform: translate3d(0,-8px,0);
+        }
+        70% {
+          transform: translate3d(0,-4px,0);
+        }
+        90% {
+          transform: translate3d(0,-2px,0);
+        }
+      }
     `}</style>
 
     {/* 消息区域 */}
-    <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 scroll-smooth">
+    <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 scroll-smooth relative">
       <div className="max-w-3xl md:max-w-4xl lg:max-w-5xl mx-auto px-4 pb-24 pt-2">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-400 opacity-60">
@@ -232,21 +323,88 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
           ))
         )}
 
-        {lastUsedLore && (
+        {/* 世界书触发预览 - 新的标签化展示 */}
+        {(triggeredEntries && triggeredEntries.length > 0) || lastUsedLore ? (
           <div className="mt-4 mb-2">
-            <details className="group rounded-2xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-600">
-              <summary className="flex items-center justify-between cursor-pointer list-none text-sm text-gray-700 font-medium">
-                世界书触发预览
-                <span className="text-[11px] text-gray-400 group-open:hidden">展开</span>
-                <span className="text-[11px] text-gray-400 hidden group-open:inline">收起</span>
-              </summary>
-              <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-gray-900 text-gray-50 p-3 max-h-52 overflow-y-auto text-xs font-sans">
-                {lastUsedLore}
-              </pre>
-            </details>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm font-medium text-gray-700">世界书触发预览</span>
+              <div className="flex-1 h-px bg-gray-200"></div>
+            </div>
+            
+            {/* 新的标签化展示 */}
+            {triggeredEntries && triggeredEntries.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {triggeredEntries.map((entry) => (
+                  <Popover
+                    key={entry.id}
+                    trigger={
+                      <Badge 
+                        variant={entry.type === "vector" ? "vector" : "keyword"}
+                        size="sm"
+                      >
+                        {entry.title || "未命名条目"}
+                      </Badge>
+                    }
+                    content={
+                      <PopoverContent 
+                        title={entry.title || "世界书条目"}
+                        className="max-w-sm"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={entry.type === "vector" ? "vector" : "keyword"}
+                              size="sm"
+                            >
+                              {entry.type === "vector" ? "语义搜索" : "关键词匹配"}
+                            </Badge>
+                            {entry.priority !== undefined && (
+                              <span className="text-xs text-gray-500">
+                                优先级: {entry.priority}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                            {entry.content}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    }
+                    side="top"
+                    align="center"
+                  />
+                ))}
+              </div>
+            ) : (
+              /* 后备：原有的文本展示 */
+              <details className="group rounded-2xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-600">
+                <summary className="flex items-center justify-between cursor-pointer list-none text-sm text-gray-700 font-medium">
+                  世界书触发预览
+                  <span className="text-[11px] text-gray-400 group-open:hidden">展开</span>
+                  <span className="text-[11px] text-gray-400 hidden group-open:inline">收起</span>
+                </summary>
+                <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-gray-900 text-gray-50 p-3 max-h-52 overflow-y-auto text-xs font-sans">
+                  {lastUsedLore}
+                </pre>
+              </details>
+            )}
           </div>
-        )}
+        ) : null}
+
+        {/* Token 统计面板 */}
+        <TokenStatsPanel tokenStats={tokenStats} className="mt-4" />
       </div>
+
+      {/* 新消息悬浮按钮 */}
+      {hasNewMessages && (
+        <button
+          onClick={handleNewMessageClick}
+          className="fixed bottom-32 right-8 z-30 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg transition-all duration-200 flex items-center gap-2 animate-bounce"
+        >
+          <ChevronDown size={16} />
+          <span className="text-sm font-medium">下方有新消息</span>
+        </button>
+      )}
     </div>
 
     {/* 底部输入栏 */}
