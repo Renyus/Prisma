@@ -108,7 +108,7 @@ async def call_chat_completions(
         "Accept": "application/json",
     }
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=300) as client:
         resp = await client.post(url, json=payload, headers=headers)
     
     try:

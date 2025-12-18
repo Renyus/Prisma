@@ -4,6 +4,7 @@ import { useCharacterCardStore } from "@/store/useCharacterCardStore";
 import { ChatService } from "@/services/ChatService";
 import { ChatMessageModel } from "@/components/ChatMessage";
 import { parseThinkingContent } from "@/lib/chatUtils";
+import { replacePlaceholders } from "@/lib/placeholderUtils";
 import type { TokenStats, TriggeredLoreEntry } from "@/lib/types";
 
 export function useChatHistory() {
@@ -26,13 +27,15 @@ export function useChatHistory() {
         return characterCards.find((c) => c.id === currentCardId) ?? null;
     }, [characterCards, currentCardId]);
 
-    // Message processing logic
+    // Message processing logic - 支持所有占位符类型
     const processMessageContent = useCallback((text: string, userName?: string) => {
         if (!text) return "";
-        const globalName = userName?.trim();
-        const cardAlias = (currentCard() as any)?.user_alias?.trim();
-        let finalUserName = globalName && globalName.length > 0 ? globalName : (cardAlias && cardAlias.length > 0 ? cardAlias : "");
-        return text.replaceAll("{{user}}", finalUserName);
+        
+        const card = currentCard();
+        const charName = card?.name || "Character";
+        const finalUserName = userName?.trim() || "User";
+        
+        return replacePlaceholders(text, finalUserName, charName);
     }, [currentCard]);
 
     // Load chat history

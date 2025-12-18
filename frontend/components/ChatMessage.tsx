@@ -7,6 +7,9 @@ import { useTypewriter } from "../hooks/useTypewriter";
 import { useMemo } from "react";
 import CodeBlock from "./CodeBlock";
 import { BrainCircuit, Info } from "lucide-react"; // 引入图标
+import { replacePlaceholders } from "../lib/placeholderUtils";
+import { useChatSettingsStore } from "../store/useChatSettingsStore";
+import { useCharacterCardStore } from "../store/useCharacterCardStore";
 
 export type ChatRole = "user" | "assistant" | "system";
 
@@ -60,7 +63,7 @@ type ExtractedBlock = {
   content: string;
 };
 
-function parseContent(raw: string) {
+function parseContent(raw: string, userName: string, charName: string) {
   let cleanText = raw;
   const extractedBlocks: ExtractedBlock[] = [];
 
@@ -92,21 +95,37 @@ function parseContent(raw: string) {
     cleanText = cleanText.replace(regex, "");
   });
 
+  // 3. 对提取的块内容进行占位符替换
+  extractedBlocks.forEach(block => {
+    block.content = replacePlaceholders(block.content, userName, charName);
+  });
+
+  // 4. 对清理后的文本进行占位符替换
+  cleanText = replacePlaceholders(cleanText.trim(), userName, charName);
+
   return {
     blocks: extractedBlocks,
-    text: cleanText.trim(),
+    text: cleanText,
   };
 }
 
 export default function ChatMessage({ message, onTypingComplete }: ChatMessageProps) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
+  
+  // 获取用户名和角色名
+  const { userName } = useChatSettingsStore();
+  const { characterCards, currentCardId } = useCharacterCardStore();
+  
+  const currentCard = characterCards.find(card => card.id === currentCardId);
+  const charName = currentCard?.name || "Character";
+  const finalUserName = userName || "User";
 
-  // 使用 useMemo 解析内容
+  // 使用 useMemo 解析内容并进行占位符替换
   const { blocks, text: visibleText } = useMemo(() => {
     if (isUser) return { blocks: [], text: message.content };
-    return parseContent(message.content);
-  }, [message.content, isUser]);
+    return parseContent(message.content, finalUserName, charName);
+  }, [message.content, isUser, finalUserName, charName]);
 
   const shouldType =
     !isUser && !isSystem && message.isStreaming && !message.isLoading && !message.isHistory;

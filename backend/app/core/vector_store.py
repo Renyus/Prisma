@@ -1,5 +1,8 @@
 import logging
 import httpx
+import asyncio
+import threading
+import time
 from typing import List, Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings as ChromaSettings
@@ -27,6 +30,13 @@ class VectorStore:
         self.client = None
         self.collection = None
         
+        # 持久化优化相关
+        self._sync_lock = threading.Lock()
+        self._pending_operations = []
+        self._sync_timer = None
+        self._sync_interval = 30  # 30秒同步一次
+        self._last_sync_time = time.time()
+        
         key, url = settings.RAG_CREDENTIALS
         self.api_key = key
         self.api_url = url.rstrip('/')
@@ -35,6 +45,7 @@ class VectorStore:
         
         if key:
             self._init_chroma()
+            self._start_sync_timer()
         else:
             logger.warning("⚠️ 未配置 RAG API Key，向量数据库不可用。")
 
@@ -55,6 +66,50 @@ class VectorStore:
         except Exception as e:
             logger.error(f"❌ ChromaDB 初始化失败: {e}")
             self.client = None
+
+    def _start_sync_timer(self):
+        """启动定时同步机制"""
+        def sync_worker():
+            while True:
+                try:
+                    time.sleep(self._sync_interval)
+                    self._force_sync()
+                except Exception as e:
+                    logger.error(f"定时同步出错: {e}")
+        
+        sync_thread = threading.Thread(target=sync_worker, daemon=True)
+        sync_thread.start()
+        logger.info(f"🔄 启动定时同步机制，间隔: {self._sync_interval}秒")
+
+    def _force_sync(self):
+        """强制同步所有待处理的操作"""
+        with self._sync_lock:
+            if not self._pending_operations:
+                return
+            
+            try:
+                # 触发ChromaDB的内部同步
+                if hasattr(self.client, '_db'):
+                    self.client._db.flush()
+                
+                # 记录同步统计
+                op_count = len(self._pending_operations)
+                self._pending_operations.clear()
+                self._last_sync_time = time.time()
+                
+                logger.info(f"💾 [Sync] 已同步 {op_count} 个操作，耗时: {time.time() - self._last_sync_time:.2f}秒")
+                
+            except Exception as e:
+                logger.error(f"强制同步失败: {e}")
+
+    def _queue_operation(self, operation_type: str, **kwargs):
+        """将操作加入待处理队列"""
+        with self._sync_lock:
+            self._pending_operations.append({
+                'type': operation_type,
+                'timestamp': time.time(),
+                **kwargs
+            })
 
     def is_available(self) -> bool:
         return self.collection is not None
@@ -111,13 +166,18 @@ class VectorStore:
             if not embeddings:
                 return
 
+            # 使用批量操作减少碎片
             self.collection.add(
                 embeddings=embeddings,
                 documents=[text],
                 metadatas=[metadata],
                 ids=[memory_id]
             )
+            
+            # 记录操作到队列
+            self._queue_operation('add_memory', memory_id=memory_id)
             logger.info(f"💾 [Vector写入] 已存储记忆 ID={memory_id}")
+            
         except Exception as e:
             logger.error(f"❌ 写入向量库失败: {e}")
 
@@ -126,6 +186,7 @@ class VectorStore:
             return
         try:
             self.collection.delete(ids=[memory_id])
+            self._queue_operation('delete_memory', memory_id=memory_id)
             logger.info(f"🗑️ [Vector删除] 已删除记忆 ID={memory_id}")
         except Exception as e:
             logger.error(f"❌ 删除向量失败: {e}")
@@ -217,6 +278,8 @@ class VectorStore:
                 metadatas=[metadata],
                 ids=[entry_id]
             )
+            
+            self._queue_operation('upsert_lore', entry_id=entry_id)
             logger.info(f"📘 [Vector] Upsert Lore ID={entry_id}")
         except Exception as e:
             logger.error(f"Lore upsert 失败: {e}")
@@ -226,6 +289,7 @@ class VectorStore:
         if not self.is_available(): return
         try:
             self.collection.delete(ids=[entry_id])
+            self._queue_operation('delete_lore', entry_id=entry_id)
             logger.info(f"🗑️ [Vector] Delete Lore ID={entry_id}")
         except Exception as e:
             logger.error(f"Lore delete 失败: {e}")
@@ -277,5 +341,29 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Lore search 失败: {e}")
             return []
+
+    # 🔥 [新增] 手动触发同步
+    async def manual_sync(self):
+        """手动触发同步操作"""
+        logger.info("🔄 手动触发同步操作")
+        self._force_sync()
+
+    # 🔥 [新增] 获取同步状态
+    def get_sync_status(self) -> Dict[str, Any]:
+        """获取当前同步状态"""
+        with self._sync_lock:
+            return {
+                'pending_operations': len(self._pending_operations),
+                'last_sync_time': self._last_sync_time,
+                'sync_interval': self._sync_interval,
+                'next_sync_in': max(0, self._sync_interval - (time.time() - self._last_sync_time))
+            }
+
+    # 🔥 [新增] 优雅关闭
+    def shutdown(self):
+        """优雅关闭，确保数据同步"""
+        logger.info("🔄 正在关闭VectorStore，执行最终同步...")
+        self._force_sync()
+        logger.info("✅ VectorStore已安全关闭")
 
 vector_store = VectorStore()

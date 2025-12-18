@@ -134,7 +134,7 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
         scrollToBottom();
       }
     }
-  }, [messages[messages.length - 1]?.isStreaming, messages[messages.length - 1]?.isLoading, isNearBottom, isUserScrolling]);
+  }, [messages.length, isNearBottom, isUserScrolling]);
 
   // Auto Scroll
   const scrollToBottom = () => {
@@ -341,6 +341,7 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
                       <Badge 
                         variant={entry.type === "vector" ? "vector" : "keyword"}
                         size="sm"
+                        priority={entry.priority}
                       >
                         {entry.title || "未命名条目"}
                       </Badge>
@@ -355,6 +356,7 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
                             <Badge 
                               variant={entry.type === "vector" ? "vector" : "keyword"}
                               size="sm"
+                              priority={entry.priority}
                             >
                               {entry.type === "vector" ? "语义搜索" : "关键词匹配"}
                             </Badge>
@@ -412,7 +414,12 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
        <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
       <div className="bg-white pb-6 pt-2">
         <div className="max-w-xs md:max-w-3xl lg:max-w-4xl mx-auto px-4">
-          <ChatInputBar onSend={onSendWrapper} disabled={isSending} />
+          <ChatInputBar 
+            onSend={onSendWrapper} 
+            disabled={isSending}
+            tokenStats={tokenStats}
+            maxModelTokens={(activeModelInfo as any)?.context_length || 128000}
+          />
           <div className="mt-2 flex items-center justify-center gap-4 text-[10px] text-gray-400 select-none">
             <span className="flex items-center gap-1">
               <kbd className="font-sans px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50 text-gray-500">↵</kbd>

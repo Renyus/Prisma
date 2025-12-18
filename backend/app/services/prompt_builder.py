@@ -48,6 +48,7 @@ def build_normalized_prompt(
     router_decision: Optional[Dict[str, Any]] = None,
     memories: List[str] = None, 
     history_summary: str = None,
+    user_name: str = "User",  # 新增用户名参数
 ) -> Dict[str, Any]:
     """
     生成发给 LLM 的标准结构，严格控制 Token 预算
@@ -76,8 +77,8 @@ def build_normalized_prompt(
     
     use_lorebook = router_decision.get("use_lorebook", True) if router_decision else True
     
-    # 1. 角色卡构建 (System 核心)
-    role_prompt = build_role_system_prompt(card)
+    # 1. 角色卡构建 (System 核心) - 传递用户名参数
+    role_prompt = build_role_system_prompt(card, user_name)
 
     # 2. 世界书触发 (RAG & Keywords)
     triggered = []

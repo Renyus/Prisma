@@ -53,6 +53,31 @@ export interface ChatResponse {
 }
 
 export const ChatService = {
+    // 全局错误处理函数
+    async handleApiError(res: Response, operation: string): Promise<never> {
+        let errorDetail = `${operation} Failed (HTTP ${res.status})`;
+        
+        try {
+            const errorData = await res.json();
+            if (errorData.detail) errorDetail = errorData.detail;
+        } catch {
+            // 如果无法解析JSON，使用默认错误信息
+        }
+
+        // 根据状态码提供友好的错误提示
+        switch (res.status) {
+            case 401:
+            case 403:
+                throw new Error("API Key无效或已过期，请检查您的API配置");
+            case 429:
+                throw new Error("请求太频繁，请稍后再试");
+            case 500:
+                throw new Error("对话太长啦，建议点击'新对话'清空上下文");
+            default:
+                throw new Error(errorDetail);
+        }
+    },
+
     async send(payload: ChatPayload): Promise<ChatResponse> {
         const url = `${APP_CONFIG.API_BASE}/chat`;
         const res = await fetch(url, {
@@ -62,12 +87,7 @@ export const ChatService = {
         });
 
         if (!res.ok) {
-            let errorDetail = `Chat API Request Failed (HTTP ${res.status})`;
-            try {
-                const errorData = await res.json();
-                if (errorData.detail) errorDetail = errorData.detail;
-            } catch {}
-            throw new Error(errorDetail);
+            this.handleApiError(res, "Chat API Request");
         }
 
         return res.json();
@@ -84,12 +104,7 @@ export const ChatService = {
         const res = await fetch(url, { method: "GET" });
 
         if (!res.ok) {
-            let errorDetail = `Chat history API Request Failed (HTTP ${res.status})`;
-            try {
-                const errorData = await res.json();
-                if (errorData.detail) errorDetail = errorData.detail;
-            } catch {}
-            throw new Error(errorDetail);
+            this.handleApiError(res, "Chat history API Request");
         }
 
         return res.json();
@@ -103,7 +118,9 @@ export const ChatService = {
         
         const url = `${APP_CONFIG.API_BASE}/chat/history?${query.toString()}`;
         const res = await fetch(url, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to clear history");
+        if (!res.ok) {
+            this.handleApiError(res, "Clear history");
+        }
     },
 
     async exportHistory(params: { user_id: string; character_id?: string; character_name?: string }): Promise<any> {
@@ -114,7 +131,9 @@ export const ChatService = {
             query.set("character_name", params.character_name || "");
         }
         const res = await fetch(`${APP_CONFIG.API_BASE}/chat/export?${query.toString()}`);
-        if (!res.ok) throw new Error("Failed to export history");
+        if (!res.ok) {
+            this.handleApiError(res, "Export history");
+        }
         return res.json();
     },
 
@@ -123,6 +142,8 @@ export const ChatService = {
             method: "POST", 
             body: formData 
         });
-        if (!res.ok) throw new Error("Failed to import history");
+        if (!res.ok) {
+            this.handleApiError(res, "Import history");
+        }
     }
 };
