@@ -378,9 +378,33 @@ async def process_chat(
     else:
         logger.info(f"📭 [Lore RAG] 未命中任何条目")
 
+    # ==================== 👇 修复开始：必须插入这段合并代码 👇 ====================
+    # 核心修复：将 RAG 检索到的完整条目合并回 lore_entries 列表
+    # 否则 prompt_builder 空有 ID 却找不到对应的 Content
+    if lore_entries is None:
+        lore_entries = []
+        
+    # 建立当前已有 ID 的索引，防止重复添加
+    existing_ids = {str(e.get("id")) for e in lore_entries}
+    
+    # 把向量命中和关键词命中的完整条目追加进去
+    for entry in vector_entries + keyword_entries:
+        entry_id = str(entry.get("id"))
+        if entry_id not in existing_ids:
+            lore_entries.append(entry)
+            existing_ids.add(entry_id)
+            
+    logger.info(f"📦 [Lore Merge] 最终传给 Builder 的条目数: {len(lore_entries)} (含 RAG 追加)")
+    # ==================== 👆 修复结束 ====================
+
     # 6. 构建 Prompt (核心修改: 传入动态 Limits)
     # 注意: max_context_tokens 这里只是前端传来的期望值，我们主要依赖后端的 max_model_tokens 来做硬限制
     user_max_history = payload.max_context_tokens or DEFAULT_MAX_HISTORY_TOKENS
+
+    # 👉 新增：尝试从 payload 中获取用户名，如果没有则回退到 "User"
+    # 注意：确保你的前端请求体(ChatRequest)里包含了 user_name 或 userName 字段
+    # 如果 payload 主要是 Pydantic 模型，可以使用 getattr 安全获取
+    current_user_name = getattr(payload, "user_name", None) or getattr(payload, "userName", "User")
 
     norm = build_normalized_prompt(
         card=payload.card or {},
@@ -391,7 +415,8 @@ async def process_chat(
         memories=relevant_memories,
         history_summary=history_summary, 
         system_modules=processed_modules,
-        router_decision={"rag_lore_ids": list(all_triggered_ids)}
+        router_decision={"rag_lore_ids": list(all_triggered_ids)},
+        user_name=current_user_name  # ✅ 加上这一行！
     )
 
     openai_payload = to_openai_payload(norm, model_name)
@@ -402,7 +427,8 @@ async def process_chat(
         logger.info(f"📊 Token预算: Sys={stats['system']} | User={stats['user']} | Hist={stats['history']} | Left={stats['budget_left']}")
 
     try:
-        reply_content = await call_llm(
+        # 调用 LLM 并接收结构化返回值
+        llm_result = await call_llm(
             model=model_name, 
             messages=openai_payload["messages"],
             temperature=payload.temperature,
@@ -412,10 +438,23 @@ async def process_chat(
             presence_penalty=payload.presence_penalty,
         )
         
+        # 提取 content 和 usage 数据
+        reply_content = llm_result["content"]
+        standardized_usage = llm_result["usage"]
+        
         print("\n" + "="*40)
         print(f"🧠 [LLM 原始回复]\n{reply_content}")
         print("="*40 + "\n")
         logger.info("✅ LLM 响应成功")
+        
+        # 更新 norm["tokenStats"] 中的缓存统计信息
+        if "tokenStats" not in norm:
+            norm["tokenStats"] = {}
+        
+        # 合并标准化 usage 数据到 tokenStats
+        norm["tokenStats"].update(standardized_usage)
+        
+        logger.info(f"📊 标准化 Usage 数据: {standardized_usage}")
 
     except Exception as exc:
         logger.exception("LLM 调用失败")

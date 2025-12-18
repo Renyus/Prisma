@@ -26,6 +26,7 @@ class TokenStats(BaseModel):
 
 class ChatRequest(BaseModel):
     user_id: str
+    userName: Optional[str] = None
     message: str
     card: Optional[Dict[str, Any]] = None
     lore: Optional[List[Dict[str, Any]]] = None

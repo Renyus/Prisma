@@ -2,9 +2,9 @@
 
 import { useState, useRef, KeyboardEvent, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUp, AlertCircle, Sparkles } from "lucide-react"; 
+import { ArrowUp, AlertCircle, Sparkles, Zap } from "lucide-react"; 
 import { calculateTokenUsage } from "@/lib/tokenUtils";
-import type { TokenStats } from "@/lib/types";
+import type { TokenStats } from "@/lib/types"; // 👈 确保这里引用了刚才修改的 types
 
 interface ChatInputBarProps {
   onSend: (text: string) => void;
@@ -23,33 +23,44 @@ export default function ChatInputBar({
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // 1. Token 计算逻辑
+  // 1. Token 预留逻辑 (保留 10% 给回复)
   const reservedTokens = useMemo(() => {
     const calculated = Math.floor(maxModelTokens * 0.10);
     return Math.max(2000, Math.min(10000, calculated));
   }, [maxModelTokens]);
 
+  // 2. 核心计算逻辑：融合输入预估 + 历史缓存数据
   const tokenUsage = useMemo(() => {
-    if (!tokenStats) {
-      return { tokens: 0, percentage: 0, isOverLimit: false, remainingTokens: maxModelTokens };
-    }
-    const contextTokens = tokenStats.system + tokenStats.user + tokenStats.history;
-    return calculateTokenUsage(value, contextTokens, maxModelTokens, reservedTokens);
+    // 基础消耗 (历史 + 系统)
+    const baseContext = tokenStats ? (tokenStats.system + tokenStats.user + tokenStats.history) : 0;
+    // 缓存命中 (直接从后端取，如果没有则为0)
+    const cacheHit = tokenStats?.cacheHit || 0;
+    
+    // 计算当前输入带来的总消耗
+    const usageResult = calculateTokenUsage(value, baseContext, maxModelTokens, reservedTokens);
+    
+    return {
+      ...usageResult,
+      cacheHitCount: cacheHit,
+      // 计算缓存占总上限的百分比 (用于内圈渲染)
+      // 例如：缓存了 64k，总上限 128k -> 内圈显示 50%
+      cachePercentage: Math.min((cacheHit / maxModelTokens) * 100, 100)
+    };
   }, [value, tokenStats, maxModelTokens, reservedTokens]);
   
   const canSend = useMemo(() => {
     return !disabled && value.trim() && !tokenUsage.isOverLimit;
   }, [disabled, value, tokenUsage.isOverLimit]);
 
-  // 2. 谷歌风格颜色映射 (Gemini 配色)
+  // 3. 谷歌风格颜色映射 (Gemini 配色)
   const theme = useMemo(() => {
     if (tokenUsage.isOverLimit) {
       return {
-        ring: "text-rose-500",      // 进度环颜色
-        bg: "bg-rose-50",           // 容器背景（溢出时）
-        button: "bg-rose-500 hover:bg-rose-600 text-white", // 按钮颜色
-        text: "text-rose-600",      // 提示字颜色
-        shadow: "shadow-rose-100"   // 聚焦阴影
+        ring: "text-rose-500",      
+        bg: "bg-rose-50",           
+        button: "bg-rose-500 hover:bg-rose-600 text-white", 
+        text: "text-rose-600",
+        shadow: "shadow-rose-100"   
       };
     }
     if (tokenUsage.percentage > 85) {
@@ -62,15 +73,15 @@ export default function ChatInputBar({
       };
     }
     return {
-      ring: "text-emerald-500",     // 正常状态：谷歌绿/蓝
-      bg: "bg-[#F0F4F9]",           // 正常背景：谷歌灰
-      button: "bg-black hover:bg-gray-800 text-white", // 正常按钮：深黑
-      text: "text-gray-400",        // 正常文字：灰色
-      shadow: "shadow-gray-200"     // 正常阴影
+      ring: "text-emerald-500",     // 正常状态：谷歌绿
+      bg: "bg-[#F0F4F9]",           
+      button: "bg-black hover:bg-gray-800 text-white", 
+      text: "text-gray-400",        
+      shadow: "shadow-gray-200"     
     };
   }, [tokenUsage]);
 
-  // 3. 自动高度
+  // 4. 自动高度
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -94,15 +105,25 @@ export default function ChatInputBar({
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
-  // 4. 环形进度条参数
-  const radius = 18;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (Math.min(tokenUsage.percentage, 100) / 100) * circumference;
+  // 5. 双层环形进度条参数配置
+  
+  // 外圈 (总消耗)：半径大，线条细
+  const radiusOuter = 19;
+  const circumOuter = 2 * Math.PI * radiusOuter;
+  const offsetOuter = circumOuter - (Math.min(tokenUsage.percentage, 100) / 100) * circumOuter;
+
+  // 内圈 (缓存命中)：半径小，代表"核心"部分已就绪
+  const radiusInner = 14; 
+  const circumInner = 2 * Math.PI * radiusInner;
+  const offsetInner = circumInner - (Math.min(tokenUsage.cachePercentage, 100) / 100) * circumInner;
+  
+  // 只有当存在缓存数据时，才显示内圈
+  const showCacheRing = tokenUsage.cacheHitCount > 0;
 
   return (
     <div className="w-full relative group font-sans">
       
-      {/* 顶部状态提示 (仅在异常/紧张时显示) */}
+      {/* 顶部状态提示 (仅在异常或紧张时显示) */}
       <AnimatePresence>
         {(tokenUsage.isOverLimit || tokenUsage.percentage > 85) && (
           <motion.div 
@@ -117,7 +138,7 @@ export default function ChatInputBar({
         )}
       </AnimatePresence>
 
-      {/* 主输入容器：Gemini 风格 */}
+      {/* 主输入容器 */}
       <motion.div
         layout
         className={`
@@ -140,58 +161,77 @@ export default function ChatInputBar({
           style={{ overflow: "hidden" }}
         />
 
-        {/* 右下角控制区：环形进度 + 按钮 */}
+        {/* 右下角控制区 */}
         <div className="flex items-center justify-center pb-1 pr-1 gap-3">
           
-          {/* Token 数字 (打字时显示) */}
+          {/* 打字时的 Token 计数显示 */}
           <AnimatePresence>
             {value.length > 0 && (
-              <motion.span 
+              <motion.div 
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
-                className={`text-[10px] font-mono font-medium ${theme.text}`}
+                className="flex flex-col items-end"
               >
-                {tokenUsage.tokens}
-              </motion.span>
+                 <span className={`text-[10px] font-mono font-medium ${theme.text}`}>
+                   {tokenUsage.tokens}
+                 </span>
+                 {showCacheRing && (
+                   <span className="text-[9px] text-amber-500 font-medium flex items-center gap-0.5">
+                     <Zap size={8} fill="currentColor" />
+                     Cache
+                   </span>
+                 )}
+              </motion.div>
             )}
           </AnimatePresence>
 
-          {/* 按钮 + 环形进度条容器 */}
-          <div className="relative w-10 h-10 flex items-center justify-center">
+          {/* 按钮 + 双层仪表盘 */}
+          <div className="relative w-11 h-11 flex items-center justify-center">
             
-            {/* 1. 环形进度背景 (浅色圈) */}
             <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 44 44">
-              <circle
-                className="text-gray-200"
-                strokeWidth="2.5"
-                stroke="currentColor"
-                fill="transparent"
-                r={radius}
-                cx="22"
-                cy="22"
-              />
-              {/* 2. 环形进度 (动态颜色圈) */}
+              {/* 1. 外圈底色 (浅灰) */}
+              <circle className="text-gray-200/60" strokeWidth="2" stroke="currentColor" fill="transparent" r={radiusOuter} cx="22" cy="22" />
+              
+              {/* 2. 内圈底色 (极淡黄，仅缓存存在时显示) */}
+              {showCacheRing && (
+                <circle className="text-amber-100/50" strokeWidth="2" stroke="currentColor" fill="transparent" r={radiusInner} cx="22" cy="22" />
+              )}
+
+              {/* 3. 内圈进度 (黄色 - 缓存命中量) */}
+              {showCacheRing && (
+                <motion.circle
+                  className="text-amber-400"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  stroke="currentColor"
+                  fill="transparent"
+                  r={radiusInner}
+                  cx="22"
+                  cy="22"
+                  style={{ strokeDasharray: circumInner }}
+                  animate={{ strokeDashoffset: offsetInner }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                />
+              )}
+
+              {/* 4. 外圈进度 (绿色/红色 - 总消耗量) */}
               <motion.circle
                 className={`${theme.ring} transition-colors duration-300`}
-                strokeWidth="2.5"
+                strokeWidth="2"
                 strokeLinecap="round"
                 stroke="currentColor"
                 fill="transparent"
-                r={radius}
+                r={radiusOuter}
                 cx="22"
                 cy="22"
-                style={{
-                  strokeDasharray: circumference,
-                }}
-                animate={{
-                  strokeDashoffset: strokeDashoffset
-                }}
+                style={{ strokeDasharray: circumOuter }}
+                animate={{ strokeDashoffset: offsetOuter }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
               />
             </svg>
 
-            {/* 3. 发送按钮 (居中) */}
+            {/* 5. 发送按钮 (居中) */}
             <button
               type="button"
               onClick={handleSend}

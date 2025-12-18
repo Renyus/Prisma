@@ -80,6 +80,9 @@ export interface TokenStats {
   estimation_method: string;  // 估算方法
   smart_context_used: boolean;  // 是否使用智能上下文
   smart_context_tokens: number;  // 智能上下文 token 数
+  cacheHit?: number;  //缓存命中
+  cacheMiss?: number; //缓存miss
+  total?: number;     // 真实的总 Token 数
 }
 
 //

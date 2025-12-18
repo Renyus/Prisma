@@ -1,4 +1,5 @@
 import { APP_CONFIG } from "@/config/constants";
+import { useChatSettingsStore } from "@/store/useChatSettingsStore";
 import type { ChatRole, TokenStats, TriggeredLoreEntry } from "@/lib/types";
 
 export interface MemoryConfig {
@@ -9,6 +10,7 @@ export interface MemoryConfig {
 export interface ChatPayload {
   user_id: string;
   message: string;
+  userName?: string; // 👈 新增这个可选字段
   card?: any;
   lore?: any[];
   model?: string;
@@ -80,11 +82,18 @@ export const ChatService = {
     },
 
     async send(payload: ChatPayload): Promise<ChatResponse> {
+        // 👇 核心修改：从 Store 获取用户名
+        const storeName = useChatSettingsStore.getState().userName;
+        const finalPayload = {
+            ...payload,
+            userName: storeName || "User" // 优先用 Store 的名字，没有就用 User
+        };
+
         const url = `${APP_CONFIG.API_BASE}/chat`;
         const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(finalPayload), // 👈 发送带有名字的 payload
         });
 
         if (!res.ok) {

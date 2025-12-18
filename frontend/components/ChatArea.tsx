@@ -10,7 +10,7 @@ import {
 } from "react";
 import { MessageSquareDashed, Check, ChevronDown, Sparkles, User, Box } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
+import PrismaLogo from "@/components/PrismaLogo";
 import ChatInputBar from "./ChatInputBar";
 import ChatMessage from "./ChatMessage";
 import TokenStatsPanel from "./TokenStatsPanel";
@@ -135,13 +135,11 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
         flex-none w-full px-6 py-4 flex justify-between items-center z-20 transition-all duration-300
         ${scrolled ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100/50" : "bg-white"}
       `}>
-        {/* 标题区 */}
+        {/* 标题区：使用 PrismaLogo 替代纯文本 */}
         <div className="flex flex-col">
-          <h1 className="text-xl font-medium tracking-tight text-[#1F1F1F] flex items-center gap-2">
-            {title}
-            {currentCard && <span className="text-xs px-2 py-0.5 rounded-full bg-[#F0F4F9] text-[#444746] font-medium">RPG</span>}
-          </h1>
-          {/* 这里可以放角色的一句话简介，如果以后有的话 */}
+           {/* 如果想保留 "RPG" 标签，可以作为 collapsed 属性或者修改 Logo 组件内部，
+               但为了美观，建议直接放 Logo，它自带了 Roleplay 小字 */}
+           <PrismaLogo />
         </div>
 
         {/* 右侧操作区 (Google Pills) */}
