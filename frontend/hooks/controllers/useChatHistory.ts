@@ -106,7 +106,7 @@ export function useChatHistory() {
         scrollToBottom?: () => void
     ) => {
         const trimmed = text.trim();
-        if (!trimmed || isSending) return;
+        if (!trimmed || isSending) return null;
 
         const userMsg: ChatMessageModel = { id: nanoid(), role: "user", content: trimmed };
         const placeholderId = nanoid();
@@ -125,6 +125,7 @@ export function useChatHistory() {
             const rawEntries: any[] = activeLorebook?.entries ?? [];
             const mappedLore = activeLorebook?.enabled === false ? [] : rawEntries.map((e) => ({
                 ...e,
+                lorebookId: activeLorebook.id, // Ensure lorebookId is present for vector search
                 key: e.keys && e.keys.length > 0 ? e.keys[0] : "",
                 keywords: e.keys || [],
             }));
@@ -166,9 +167,20 @@ export function useChatHistory() {
             }
             setLastUsedLore(lorePreview);
 
-            // Save triggered lore entries
-            if (data.triggered_entries) {
+            // Save triggered lore entries - 优先使用后端为UI拼装的数据
+            if (data.triggered_entries && Array.isArray(data.triggered_entries)) {
                 setTriggeredEntries(data.triggered_entries);
+            } 
+            // 如果没有 triggered_entries，则使用原始的 triggeredLoreItems
+            else if (data.triggeredLoreItems && Array.isArray(data.triggeredLoreItems)) {
+                const mappedEntries = data.triggeredLoreItems.map((entry: any) => ({
+                    id: entry.id || entry._id || '',
+                    title: entry.comment || entry.content?.substring(0, 20) + '...' || 'Unknown',
+                    content: entry.content || '',
+                    type: entry.type || (entry.key ? 'keyword' : 'vector'),
+                    priority: entry.priority || 0
+                }));
+                setTriggeredEntries(mappedEntries);
             }
 
             // Save token stats
@@ -184,11 +196,13 @@ export function useChatHistory() {
                 scrollToBottom();
             }
 
+            return data;
         } catch (error: any) {
             console.error("发送失败：", error);
             setMessages((prev) => prev.map((msg) =>
                 msg.id === placeholderId ? { ...msg, content: `Error: ${error.message || "未知错误"}\n请检查后端连接 (Python) 是否正常。`, isLoading: false, isStreaming: false } : msg
             ));
+            return null;
         } finally {
             setIsSending(false);
         }

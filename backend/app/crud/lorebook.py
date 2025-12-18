@@ -12,7 +12,6 @@ def get_lorebooks(db: Session, user_id: str):
     
     # 填充 entries 的 keys (string -> list)
     for book in books:
-        # [修复] 这里的属性名是 entries，不是 items
         for item in book.entries:
             if item.keys:
                 item.keys = item.keys.split(",")
@@ -23,7 +22,6 @@ def get_lorebooks(db: Session, user_id: str):
 def get_lorebook(db: Session, book_id: str):
     book = db.query(db_models.Lorebook).filter(db_models.Lorebook.id == book_id).first()
     if book:
-        # [修复] items -> entries
         for item in book.entries:
             if item.keys:
                 item.keys = item.keys.split(",")
@@ -58,7 +56,6 @@ def update_lorebook(db: Session, book_id: str, update_data: LorebookUpdate):
     
     # 手动处理 keys (string -> list)
     try:
-        # [修复] items -> entries
         for item in db_obj.entries:
             raw_keys = item.keys
             if not raw_keys:
@@ -83,7 +80,6 @@ def delete_lorebook(db: Session, book_id: str):
 def create_lore_item(db: Session, item: LoreItemCreate):
     keys_str = ",".join(item.keys) if item.keys else ""
     
-    # [修复] 使用 LorebookEntry
     db_obj = db_models.LorebookEntry(
         id=item.id,
         lorebook_id=item.lorebook_id,
@@ -105,12 +101,10 @@ def create_lore_item(db: Session, item: LoreItemCreate):
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
-    # 恢复 keys 为列表以便返回
     db_obj.keys = item.keys
     return db_obj
 
 def update_lore_item(db: Session, item_id: str, update_data: LoreItemUpdate):
-    # [修复] 使用 LorebookEntry
     db_obj = db.query(db_models.LorebookEntry).filter(db_models.LorebookEntry.id == item_id).first()
     if not db_obj:
         return None
@@ -135,7 +129,6 @@ def update_lore_item(db: Session, item_id: str, update_data: LoreItemUpdate):
     return db_obj
 
 def delete_lore_item(db: Session, item_id: str):
-    # [修复] 使用 LorebookEntry
     db_obj = db.query(db_models.LorebookEntry).filter(db_models.LorebookEntry.id == item_id).first()
     if db_obj:
         db.delete(db_obj)
@@ -143,25 +136,24 @@ def delete_lore_item(db: Session, item_id: str):
         return True
     return False
 
-# --- 🔥 [新增] 仅获取 Active 的条目 (Server-side Logic) ---
+# --- 🔥 [核心逻辑] 获取活跃条目 (供 chat_service 调用) ---
 def get_active_lore_entries(db: Session, user_id: str):
     """
     获取指定用户所有 Active Lorebook 下的所有 Enabled Entry
-    返回 List[Dict] 格式，Key 风格为 CamelCase 以匹配 lorebook_service
+    返回 List[Dict]，字段名转为 camelCase 以匹配前端习惯
     """
-    # 1. 找到该用户所有激活的 Lorebook ID
+    # 1. 找到所有激活的 Book ID
     active_book_ids = (
         db.query(db_models.Lorebook.id)
         .filter(db_models.Lorebook.user_id == user_id, db_models.Lorebook.is_active == True)
         .all()
     )
-    # result is like [('id1',), ('id2',)]
     active_book_ids = [r[0] for r in active_book_ids]
 
     if not active_book_ids:
         return []
 
-    # 2. 查找这些 Book 下所有 enabled=True 的 Entry
+    # 2. 找到这些 Book 下所有启用的 Entry
     entries = (
         db.query(db_models.LorebookEntry)
         .filter(
@@ -175,7 +167,6 @@ def get_active_lore_entries(db: Session, user_id: str):
     for e in entries:
         keys_list = e.keys.split(",") if e.keys else []
         
-        # 映射为 CamelCase，供 lorebook_service 使用
         entry_dict = {
             "id": e.id,
             "lorebookId": e.lorebook_id,
@@ -186,7 +177,6 @@ def get_active_lore_entries(db: Session, user_id: str):
             "priority": e.priority,
             "order": e.order,
             "probability": e.probability,
-            # CamelCase Mapping
             "useRegex": e.use_regex,
             "caseSensitive": e.case_sensitive,
             "matchWholeWord": e.match_whole_word,
@@ -199,19 +189,14 @@ def get_active_lore_entries(db: Session, user_id: str):
     
     return result
 
-# --- 🔥 [新增] 关键词匹配检索 ---
-def search_lore_entries_by_keywords(active_entries: List[Dict], query_text: str, limit: int = 10):
+# --- 🔥 [核心修复] 关键词检索 (必须返回对象列表！) ---
+def search_lore_entries_by_keywords(active_entries: List[Dict], query_text: str, limit: int = 10) -> List[Dict]:
     """
     基于关键词的简单匹配检索
-    直接在已获取的条目列表中进行匹配，避免重复数据库查询
     
-    Args:
-        active_entries: 已获取的活跃条目列表
-        query_text: 查询文本
-        limit: 返回结果数量限制
-    
-    Returns:
-        匹配的完整条目对象列表
+    BUG 修复: 
+    旧版本可能返回了 matched_ids (List[str])，导致 chat_service 里的 entry.get('id') 报错。
+    现在确保返回 matched_entries (List[Dict])。
     """
     if not active_entries:
         return []
@@ -224,17 +209,17 @@ def search_lore_entries_by_keywords(active_entries: List[Dict], query_text: str,
         if not keywords:
             continue
             
-        # 检查是否有关键词匹配
+        # 检查关键词匹配
         for keyword in keywords:
             if not keyword.strip():
                 continue
                 
             keyword_lower = keyword.lower()
             
-            # 简单的包含匹配（可以后续扩展为正则匹配）
+            # 简单的包含匹配
             if keyword_lower in query_lower:
-                matched_entries.append(entry)
-                break  # 找到一个匹配就足够了
+                matched_entries.append(entry) # <--- 关键点：这里放入完整对象
+                break  # 只要命中一个关键词就算触发
     
-    # 返回限制数量的结果
+    # 限制返回数量
     return matched_entries[:limit]

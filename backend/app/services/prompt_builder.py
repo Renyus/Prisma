@@ -199,6 +199,7 @@ def build_normalized_prompt(
         "messages": messages,
         "loreBlock": lore_blocks, 
         "routerDecision": router_decision,
+        "triggeredLore": triggered,
         "tokenStats": {
             "system": system_tokens,
             "user": user_tokens,

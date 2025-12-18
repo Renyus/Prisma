@@ -60,6 +60,7 @@ export function useChatController() {
 
     // --- Main Actions ---
     const handleSend = async (text: string, scrollToBottom: () => void) => {
+        // 发送消息 - 触发条目处理逻辑已在 useChatHistory.ts 中完成
         await chatHistory.sendMessage(
             text, 
             chatSettings, 

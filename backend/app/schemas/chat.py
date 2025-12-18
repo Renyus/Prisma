@@ -60,6 +60,7 @@ class ChatResponse(BaseModel):
     systemPreview: Optional[str] = None
     usedLore: Optional[Any] = None
     triggered_entries: Optional[List[TriggeredLoreEntry]] = None  # 新增触发的世界书条目
+    triggeredLoreItems: Optional[List[Dict[str, Any]]] = None
     model: Optional[str] = None
     tokenStats: Optional[TokenStats] = None  # 新增 token 统计信息
 

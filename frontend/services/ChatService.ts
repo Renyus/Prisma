@@ -49,6 +49,7 @@ export interface ChatResponse {
     usedLore?: any;
     loreBlock?: any;
     triggered_entries?: TriggeredLoreEntry[];  // 新增触发的世界书条目
+    triggeredLoreItems?: any[];  // 新增触发的世界书条目原始数据
     tokenStats?: TokenStats;  // 新增 token 统计信息
 }
 

@@ -314,6 +314,8 @@ async def process_chat(
                     logger.info(f"📘 [Lore RAG] 向量命中 {len(vector_matches)} 条")
             except Exception as e:
                 logger.warning(f"Lore RAG Error: {e}")
+        else:
+            logger.info("ℹ️ [Lore RAG] 跳过向量检索 (无 active_book_ids)")
 
     # 2. 关键词检索 (精确匹配) - 直接获取完整条目对象
     try:
@@ -435,5 +437,6 @@ async def process_chat(
         systemPreview=norm.get("systemPrompt"),
         usedLore=norm.get("loreBlock"),
         triggered_entries=triggered_entries if triggered_entries else None,
+        triggeredLoreItems=norm.get("triggeredLore"),
         tokenStats=norm.get("tokenStats"),
     )
