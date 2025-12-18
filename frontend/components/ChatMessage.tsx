@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, Info, Sparkles, User, ChevronDown, ChevronRight, Terminal } from "lucide-react"; 
+import { BrainCircuit, Info, ChessKnight, ChessKing, ChevronDown, ChevronRight, Terminal } from "lucide-react"; 
 
 import TypingDots from "./TypingDots";
 import CodeBlock from "./CodeBlock";
@@ -114,16 +114,16 @@ export default function ChatMessage({ message, onTypingComplete }: ChatMessagePr
         <div className="flex-shrink-0 mt-1">
           {isUser ? (
             <div className="w-8 h-8 rounded-full bg-[#1F1F1F] flex items-center justify-center text-white shadow-sm">
-               <User size={16} />
+               <ChessKing size={16} />
             </div>
           ) : isSystem ? (
             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
                <Terminal size={16} />
             </div>
           ) : (
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${message.isStreaming ? "animate-pulse" : ""}`}>
+            <div className={`w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-100/50 text-emerald-600 ${message.isStreaming ? "animate-pulse" : ""}`}>
                {/* 使用 SVG 或 Lucide Icon 模拟 Gemini Sparkle */}
-               <Sparkles size={20} className={message.isStreaming ? "text-indigo-500" : "text-emerald-600"} />
+               <ChessKnight size={20} className={message.isStreaming ? "text-indigo-500" : "text-emerald-600"} />
             </div>
           )}
         </div>
@@ -165,7 +165,7 @@ export default function ChatMessage({ message, onTypingComplete }: ChatMessagePr
               `}
             >
               <div className={`prose prose-neutral max-w-none 
-                ${isUser ? "prose-p:my-0" : "prose-p:leading-7 prose-li:leading-7"}
+                ${isUser ? "prose-p:my-0 prose-p:leading-relaxed" : "prose-p:leading-8 prose-p:tracking-[0.015em] prose-li:leading-8 prose-p:text-[#2d2d2d]"}
                 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
                 prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-[#1F1F1F] prose-code:font-mono prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
               `}>

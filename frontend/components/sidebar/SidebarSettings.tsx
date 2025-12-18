@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Info, SlidersHorizontal, Brain, Cpu, Zap, Thermometer, Activity } from "lucide-react";
+import { Info, SquareStack, FlaskConical, BookOpen, Zap, Thermometer, Activity } from "lucide-react";
 
 interface SidebarSettingsProps {
     currentCard: any;
@@ -71,7 +71,7 @@ export function SidebarSettings({
         {/* Context 控制 */}
         <div className="bg-white rounded-[20px] p-1 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2 text-[#444746]">
-                <SlidersHorizontal size={16} />
+                <SquareStack size={16} />
                 <span className="text-sm font-medium">上下文长度</span>
             </div>
             <div className="p-3 space-y-3">
@@ -94,7 +94,7 @@ export function SidebarSettings({
         <div className="bg-white rounded-[20px] p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-[#444746]">
-                    <Brain size={16} />
+                    <FlaskConical size={16} />
                     <span className="text-sm font-medium">长期记忆 (RAG)</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -124,7 +124,7 @@ export function SidebarSettings({
         {/* 模型参数 - 现在全部可输入了 */}
         <div className="bg-white rounded-[20px] p-4 shadow-sm space-y-6">
              <div className="flex items-center gap-2 text-[#444746] mb-2">
-                <Cpu size={16} />
+                <BookOpen size={16} />
                 <span className="text-sm font-medium">模型参数</span>
              </div>
              

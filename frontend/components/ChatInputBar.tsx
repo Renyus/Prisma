@@ -123,7 +123,7 @@ export default function ChatInputBar({
         className={`
           relative flex items-end gap-2 rounded-[28px] p-2 transition-all duration-300 ease-out
           ${tokenUsage.isOverLimit ? theme.bg : (isFocused ? "bg-white" : theme.bg)}
-          ${isFocused ? `shadow-lg ${theme.shadow} ring-1 ring-black/5` : "hover:bg-[#E2E7EB]"}
+          ${isFocused ? `bg-white shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] ring-2 ring-blue-100/60 -translate-y-[1px]` : "hover:bg-[#E2E7EB] border border-transparent"}
         `}
       >
         <textarea
