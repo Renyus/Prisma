@@ -4,18 +4,20 @@ import { UserCircle2, Book, Sparkles } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 
 const routeItems = [
-  { label: "角色卡 (Character)",  icon: UserCircle2, href: "/character-setup" },
-  { label: "世界书 (Lorebook)",   icon: Book,        href: "/lorebook" },
-  { label: "系统微调 (Prompts)",  icon: Sparkles,    href: "/prompts" }, 
+  { label: "角色卡",  icon: UserCircle2, href: "/character-setup" },
+  { label: "世界书",   icon: Book,        href: "/lorebook" },
+  { label: "系统微调",  icon: Sparkles,    href: "/prompts" }, 
 ];
 
 interface SidebarNavigationProps {
+  collapsed: boolean;
   onOpenCharacterPanel?: () => void;
   onOpenLorebookPanel?: () => void;
   onOpenPromptPanel?: () => void;
 }
 
 export function SidebarNavigation({ 
+    collapsed,
     onOpenCharacterPanel, 
     onOpenLorebookPanel, 
     onOpenPromptPanel 
@@ -24,35 +26,45 @@ export function SidebarNavigation({
     const pathname = usePathname();
 
     return (
-        <div className="flex-shrink-0 px-4 mb-4">
-            <div className="space-y-1.5">
-                {routeItems.map((item) => {
-                    const Icon = item.icon;
-                    const active = pathname === item.href; 
-                    return (
-                        <button
-                            key={item.href}
-                            onClick={() => {
-                                if (item.href === "/character-setup" && onOpenCharacterPanel) return onOpenCharacterPanel();
-                                if (item.href === "/lorebook" && onOpenLorebookPanel) return onOpenLorebookPanel();
-                                if (item.href === "/prompts" && onOpenPromptPanel) return onOpenPromptPanel(); 
-                                router.push(item.href);
-                            }}
-                            className={`
-                                relative flex w-full items-center gap-4 px-4 py-3 rounded-full text-sm font-medium transition-all duration-200
-                                ${active 
-                                    ? "bg-blue-100/70 text-gray-900 before:content-[''] before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-1 before:bg-blue-600 before:rounded-r-full" 
-                                    : "text-[#444746] hover:bg-[#e0e5eb]"
-                                }
-                            `}
-                        >
-                            <Icon size={20} className={active ? "text-blue-600" : "text-gray-600"} strokeWidth={2} />
-                            <span>{item.label}</span>
-                        </button>
-                    );
-                })}
-            </div>
-            <div className="border-t border-gray-300/50 mx-2 mt-4"></div>
-        </div>
+        <nav className="flex flex-col gap-1">
+            {routeItems.map((item) => {
+                const Icon = item.icon;
+                const active = pathname === item.href; 
+                
+                return (
+                    <button
+                        key={item.href}
+                        title={collapsed ? item.label : ""}
+                        onClick={() => {
+                            if (item.href === "/character-setup" && onOpenCharacterPanel) return onOpenCharacterPanel();
+                            if (item.href === "/lorebook" && onOpenLorebookPanel) return onOpenLorebookPanel();
+                            if (item.href === "/prompts" && onOpenPromptPanel) return onOpenPromptPanel(); 
+                            router.push(item.href);
+                        }}
+                        className={`
+                            group flex items-center transition-all duration-200 relative
+                            ${collapsed 
+                                ? "justify-center w-10 h-10 rounded-full mx-auto" // 收起模式：居中圆形
+                                : "w-full gap-4 px-4 py-3 rounded-full" // 展开模式：长条药丸
+                            }
+                            ${active 
+                                ? "bg-[#D3E3FD] text-[#041E49]" // Google Active Blue
+                                : "text-[#444746] hover:bg-gray-200/50"
+                            }
+                        `}
+                    >
+                        <Icon 
+                            size={collapsed ? 20 : 20} 
+                            className={active ? "text-[#041E49]" : "text-[#444746] group-hover:text-[#1F1F1F]"} 
+                            strokeWidth={2} 
+                        />
+                        
+                        {!collapsed && (
+                            <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
+                        )}
+                    </button>
+                );
+            })}
+        </nav>
     );
 }

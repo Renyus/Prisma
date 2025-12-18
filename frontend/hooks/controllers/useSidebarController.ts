@@ -72,6 +72,7 @@ export function useSidebarController({ onNewChat }: { onNewChat?: () => void }) 
     const handleExportCurrentSession = async () => {
         try {
           setIsExporting(true);
+          addToast("正在准备导出数据...", "info"); // Show starting toast
           
           const data = await ChatService.exportHistory({
               user_id: APP_CONFIG.DEFAULT_USER_ID,
@@ -84,7 +85,7 @@ export function useSidebarController({ onNewChat }: { onNewChat?: () => void }) 
           a.href = URL.createObjectURL(blob);
           a.download = `chat_${APP_CONFIG.DEFAULT_USER_ID}_${Date.now()}.json`;
           a.click();
-          addToast("导出成功", "success");
+          // addToast("已开始下载", "success"); // 用户要求只保留一个 Toast
         } catch (err) {
           addToast("导出失败", "error");
         } finally {

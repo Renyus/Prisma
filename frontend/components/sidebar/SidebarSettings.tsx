@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Info, SlidersHorizontal, Brain, Cpu } from "lucide-react";
-import CollapsibleCard from "../ui/CollapsibleCard";
+import { Info, SlidersHorizontal, Brain, Cpu, Zap, Thermometer, Activity } from "lucide-react";
 
 interface SidebarSettingsProps {
     currentCard: any;
@@ -38,91 +37,119 @@ export function SidebarSettings({
     currentPreset
 }: SidebarSettingsProps) {
 
+    // M3 风格 Chip 按钮
     const presetBtnClass = (k: "light" | "normal" | "long") =>
         [
-          "px-3 py-1 rounded-lg text-[10px] border transition-all duration-200 font-medium",
+          "flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200",
           currentPreset === k
-            ? "bg-gray-800 text-white border-transparent shadow-sm"
-            : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:border-gray-300",
+            ? "bg-[#D3E3FD] text-[#041E49] shadow-sm" // Google Active Blue
+            : "bg-transparent text-[#444746] hover:bg-gray-100",
         ].join(" ");
 
     return (
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-6 space-y-3">
+      <div className="space-y-4 pb-6">
         {/* 状态卡片 */}
-        <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 mx-1 mb-2">
-             <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        <div className="bg-white rounded-[20px] p-4 shadow-sm">
+             <div className="flex items-center gap-2 mb-3 text-[11px] font-bold text-[#444746] uppercase tracking-wider opacity-60">
                 <Info size={12} />
-                <span>Status</span>
+                <span>Session Info</span>
              </div>
-             <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                    <span className="text-xs text-gray-500">Character:</span>
-                    <span className="text-xs font-medium text-gray-800 truncate flex-1 text-right">{currentCard?.name || "-"}</span>
+             <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+                    <span className="text-sm text-[#444746]">角色</span>
+                    <span className="text-sm font-semibold text-[#1F1F1F] truncate flex-1 text-right">{currentCard?.name || "未选择"}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${currentBook?.enabled!==false ? "bg-blue-500" : "bg-gray-300"}`}></div>
-                    <span className="text-xs text-gray-500">Lorebook:</span>
-                    <span className="text-xs font-medium text-gray-800 truncate flex-1 text-right">{currentBook?.name || "-"}</span>
+                <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${currentBook?.enabled!==false ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" : "bg-gray-300"}`}></div>
+                    <span className="text-sm text-[#444746]">世界书</span>
+                    <span className="text-sm font-semibold text-[#1F1F1F] truncate flex-1 text-right">{currentBook?.name || "未加载"}</span>
                 </div>
              </div>
         </div>
 
-        {/* 折叠设置 */}
-        <div className="flex flex-col gap-2 mx-1">
-            <CollapsibleCard title="Context" icon={SlidersHorizontal} className="bg-white shadow-sm border-gray-100">
-                <div className="space-y-3 pt-1">
-                    <div className="flex gap-2 justify-between">
-                        <button className={presetBtnClass("light")} onClick={() => setPreset("light")}>省流</button>
-                        <button className={presetBtnClass("normal")} onClick={() => setPreset("normal")}>标准</button>
-                        <button className={presetBtnClass("long")} onClick={() => setPreset("long")}>长文</button>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-gray-400 font-mono bg-gray-50 p-1.5 rounded-md">
+        {/* Context 控制 */}
+        <div className="bg-white rounded-[20px] p-1 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2 text-[#444746]">
+                <SlidersHorizontal size={16} />
+                <span className="text-sm font-medium">上下文长度</span>
+            </div>
+            <div className="p-3 space-y-3">
+                <div className="flex gap-1 bg-[#F0F4F9] p-1 rounded-2xl">
+                    <button className={presetBtnClass("light")} onClick={() => setPreset("light")}>省流</button>
+                    <button className={presetBtnClass("normal")} onClick={() => setPreset("normal")}>标准</button>
+                    <button className={presetBtnClass("long")} onClick={() => setPreset("long")}>长文</button>
+                </div>
+                <div className="flex justify-between items-center px-2 py-1">
+                    <span className="text-xs text-gray-400">当前消耗</span>
+                    <div className="flex gap-3 text-xs font-mono font-medium text-[#444746]">
                         <span>MSG: {contextMessages}</span>
                         <span>TOK: {contextTokens}</span>
                     </div>
                 </div>
-            </CollapsibleCard>
+            </div>
+        </div>
 
-            <CollapsibleCard 
-                title="Memory (RAG)" 
-                icon={Brain} 
-                className="bg-white shadow-sm border-gray-100"
-                headerAction={
+        {/* 记忆 (RAG) 设置 */}
+        <div className="bg-white rounded-[20px] p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-[#444746]">
+                    <Brain size={16} />
+                    <span className="text-sm font-medium">长期记忆 (RAG)</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
                     <input 
                         type="checkbox" 
                         checked={memoryEnabled} 
-                        onChange={(e) => { e.stopPropagation(); setMemoryEnabled(e.target.checked); }}
-                        className="h-4 w-7 appearance-none rounded-full bg-gray-200 transition-colors cursor-pointer checked:bg-blue-500 checked:after:translate-x-3 after:absolute after:top-[2px] after:left-[2px] after:h-3 after:w-3 after:rounded-full after:bg-white after:shadow after:transition-transform relative"
+                        onChange={(e) => setMemoryEnabled(e.target.checked)} 
+                        className="sr-only peer"
                     />
-                }
-            >
-                <div className="pt-2 px-1">
-                   <div className="flex justify-between text-[10px] text-gray-500 mb-1">
-                       <span>Limit</span>
-                       <span className="font-mono">{memoryLimit}</span>
-                   </div>
-                   <input type="range" min={1} max={100} value={memoryLimit} onChange={(e)=>setMemoryLimit(parseInt(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+            </div>
+            {memoryEnabled && (
+                <div className="pt-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                   <ParamSlider 
+                        label="检索条数" 
+                        value={memoryLimit} 
+                        setValue={setMemoryLimit} 
+                        min={1} max={100} step={1} 
+                        icon={<Zap size={14}/>}
+                        isInt={true} // 确保是整数
+                    />
                 </div>
-            </CollapsibleCard>
+            )}
+        </div>
 
-            <CollapsibleCard title="Parameters" icon={Cpu} className="bg-white shadow-sm border-gray-100">
-                <div className="space-y-4 pt-1 px-1">
-                     <ParamSlider label="Temp" value={temperature} setValue={setTemperature} min={0} max={2} step={0.1} />
-                     <ParamSlider label="Top P" value={topP} setValue={setTopP} min={0} max={1} step={0.05} />
-                     <ParamSlider label="Penalty" value={frequencyPenalty} setValue={setFrequencyPenalty} min={-2} max={2} step={0.1} />
-                     <ParamSlider label="Max Tokens" value={maxTokens} setValue={setMaxTokens} min={100} max={8192} step={16} />
-                </div>
-            </CollapsibleCard>
+        {/* 模型参数 - 现在全部可输入了 */}
+        <div className="bg-white rounded-[20px] p-4 shadow-sm space-y-6">
+             <div className="flex items-center gap-2 text-[#444746] mb-2">
+                <Cpu size={16} />
+                <span className="text-sm font-medium">模型参数</span>
+             </div>
+             
+             <ParamSlider label="Temperature" value={temperature} setValue={setTemperature} min={0} max={2} step={0.1} icon={<Thermometer size={14}/>} />
+             <ParamSlider label="Top P" value={topP} setValue={setTopP} min={0} max={1} step={0.05} icon={<Activity size={14}/>} />
+             <ParamSlider label="Penalty" value={frequencyPenalty} setValue={setFrequencyPenalty} min={-2} max={2} step={0.1} icon={<Zap size={14}/>} />
+             <ParamSlider 
+                label="Max Tokens" 
+                value={maxTokens} 
+                setValue={setMaxTokens} 
+                min={100} max={16384} step={16} 
+                icon={<Info size={14}/>} 
+                isInt={true} // 确保 tokens 不会出现小数
+             />
         </div>
       </div>
     );
 }
 
-function ParamSlider({ label, value, setValue, min, max, step }: any) {
+// --- 完美修复版 ParamSlider ---
+// 包含：可编辑 Input、范围限制、Blur 提交、Enter 提交、整数支持
+function ParamSlider({ label, value, setValue, min, max, step, icon, isInt = false }: any) {
     const [inputValue, setInputValue] = useState(value.toString());
-    
-    // 同步外部 value 变化到 input
+
+    // 监听外部 value 变化 (比如切预设时)
     useEffect(() => {
         setInputValue(value.toString());
     }, [value]);
@@ -131,46 +158,85 @@ function ParamSlider({ label, value, setValue, min, max, step }: any) {
         setInputValue(e.target.value);
     };
 
-    const handleInputBlur = () => {
-        const numValue = parseFloat(inputValue);
+    // 核心修复：提交逻辑
+    const commitValue = () => {
+        let numValue = parseFloat(inputValue);
+        
         if (isNaN(numValue)) {
             setInputValue(value.toString());
             return;
         }
-        
-        // 限制在范围内
+
+        // 如果强制整数 (如 Tokens, RAG Limit)
+        if (isInt) {
+            numValue = Math.round(numValue);
+        }
+
+        // 范围限制
         const clampedValue = Math.max(min, Math.min(max, numValue));
+        
         setValue(clampedValue);
         setInputValue(clampedValue.toString());
     };
 
-    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
-            (e.target as HTMLInputElement).blur();
+            (e.target as HTMLInputElement).blur(); // 触发 onBlur
         }
     };
 
     return (
-        <div className="space-y-1.5">
-            <div className="flex justify-between items-center text-[10px] text-gray-500">
-                <span>{label}</span>
+        <div className="group">
+            <div className="flex justify-between items-center mb-2">
+                {/* 左侧 Label */}
+                <div className="flex items-center gap-2 text-xs text-gray-500 font-medium group-hover:text-gray-800 transition-colors">
+                    {icon}
+                    <span>{label}</span>
+                </div>
+                
+                {/* 右侧 Input (可编辑) */}
                 <input
                     type="number"
                     value={inputValue}
                     onChange={handleInputChange}
-                    onBlur={handleInputBlur}
-                    onKeyDown={handleInputKeyDown}
-                    min={min}
-                    max={max}
+                    onBlur={commitValue}
+                    onKeyDown={handleKeyDown}
                     step={step}
-                    className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded-lg text-gray-700 font-semibold w-16 text-center border border-transparent focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                    className="
+                        font-mono text-xs font-bold text-[#1F1F1F] text-center
+                        bg-gray-100 hover:bg-gray-200 focus:bg-white
+                        w-16 py-1 rounded-md  /* w-16 保证大数字能放下 */
+                        border border-transparent focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
+                        transition-all
+                    "
                 />
             </div>
-            <input 
-                type="range" min={min} max={max} step={step} value={value} 
-                onChange={(e) => setValue(parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-600 hover:accent-gray-800 transition-all"
-            />
+            
+            {/* 滑块轨道 */}
+            <div className="relative h-6 flex items-center">
+                <input 
+                    type="range" min={min} max={max} step={step} 
+                    value={value} 
+                    onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setValue(isInt ? Math.round(val) : val);
+                    }}
+                    className="
+                        absolute w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer
+                        hover:bg-gray-300 transition-colors
+                        focus:outline-none
+                        [&::-webkit-slider-thumb]:appearance-none
+                        [&::-webkit-slider-thumb]:w-4
+                        [&::-webkit-slider-thumb]:h-4
+                        [&::-webkit-slider-thumb]:bg-[#444746]
+                        [&::-webkit-slider-thumb]:rounded-full
+                        [&::-webkit-slider-thumb]:shadow-md
+                        [&::-webkit-slider-thumb]:transition-transform
+                        [&::-webkit-slider-thumb]:hover:scale-125
+                        [&::-webkit-slider-thumb]:active:scale-110
+                    "
+                />
+            </div>
         </div>
     )
 }
