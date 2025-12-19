@@ -1,29 +1,32 @@
-import { APP_CONFIG } from "@/config/constants";
+import { API_ROUTES } from "@/config/apiRoutes";
 import { request } from "@/lib/backendClient";
-import type { CharacterCard } from "@/types/character";
-
-export { type CharacterCard };
+// import type { CharacterCard } from "@/types/character"; // Old type
+import type { Character, CharacterCreate, CharacterUpdate } from "@/types/character"; // New types
 
 export const CharacterService = {
-    async getAll(): Promise<CharacterCard[]> {
-        return request<CharacterCard[]>("/cards/", { method: "GET" });
+    async getAll(): Promise<Character[]> {
+        return request<Character[]>(API_ROUTES.CHARACTER.LIST, { method: "GET" });
     },
 
-    async create(card: CharacterCard): Promise<CharacterCard> {
-        return request<CharacterCard>("/cards/", {
+    async getById(id: string): Promise<Character> {
+        return request<Character>(API_ROUTES.CHARACTER.GET(id), { method: "GET" });
+    },
+
+    async create(character: CharacterCreate): Promise<Character> {
+        return request<Character>(API_ROUTES.CHARACTER.CREATE, {
             method: "POST",
-            body: JSON.stringify(card),
+            body: JSON.stringify(character),
         });
     },
 
-    async update(id: string, patch: Partial<CharacterCard>): Promise<CharacterCard> {
-        return request<CharacterCard>(`/cards/${id}`, {
+    async update(id: string, patch: CharacterUpdate): Promise<Character> {
+        return request<Character>(API_ROUTES.CHARACTER.UPDATE(id), {
             method: "PATCH",
             body: JSON.stringify(patch),
         });
     },
 
     async delete(id: string): Promise<void> {
-        return request<void>(`/cards/${id}`, { method: "DELETE" });
+        return request<void>(API_ROUTES.CHARACTER.DELETE(id), { method: "DELETE" });
     }
 };

@@ -7,7 +7,7 @@ import Sidebar from "../components/Sidebar";
 import { CharacterCardPanel } from "@/components/CharacterCardPanel";
 import { LorebookPanel } from "@/components/LorebookPanel";
 // 🔥 1. 引入 Prompt 面板 (确保路径对)
-import PromptPanel from "@/components/settings/PromptPanel"; 
+
 
 import { useCharacterCardStore } from "@/store/useCharacterCardStore";
 import { useLorebookStore } from "@/store/useLorebookStore";
@@ -20,10 +20,10 @@ export default function Home() {
   // === 🔥 2. 状态管理核心：三个面板的开关 ===
   const [showCharacterPanel, setShowCharacterPanel] = useState(false);
   const [showLorebookPanel, setShowLorebookPanel] = useState(false);
-  const [showPromptPanel, setShowPromptPanel] = useState(false); // 新增这个
+  
 
   const {
-    fetchCards, 
+    fetchCharacters, 
     // characterCards, // 如果没用到可以不解构
     // currentCardId,
     // setCurrentCard,
@@ -32,9 +32,9 @@ export default function Home() {
   const { loadFromStorage: loadLorebooks } = useLorebookStore();
 
   useEffect(() => {
-    fetchCards();
+    fetchCharacters();
     loadLorebooks();
-  }, [fetchCards, loadLorebooks]);
+  }, [fetchCharacters, loadLorebooks]);
 
   return (
     <>
@@ -48,7 +48,7 @@ export default function Home() {
           // 🔥 3. 连线：把开关函数传给 Sidebar
           onOpenCharacterPanel={() => setShowCharacterPanel(true)}
           onOpenLorebookPanel={() => setShowLorebookPanel(true)}
-          onOpenPromptPanel={() => setShowPromptPanel(true)} 
+           
         />
 
         {/* Chat Area: 主屏幕 */}
@@ -71,11 +71,7 @@ export default function Home() {
         onClose={() => setShowLorebookPanel(false)}
       />
 
-      {/* 系统微调面板 */}
-      <PromptPanel 
-        open={showPromptPanel} 
-        onClose={() => setShowPromptPanel(false)} 
-      />
+      
     </>
   );
 }

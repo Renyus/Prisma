@@ -6,21 +6,21 @@ import { useRouter, usePathname } from "next/navigation";
 const routeItems = [
   { label: "角色卡",  icon: Users, href: "/character-setup" },
   { label: "世界书",   icon: Library,        href: "/lorebook" },
-  { label: "参数卡",  icon: Settings2,    href: "/prompts" }, 
+  
 ];
 
 interface SidebarNavigationProps {
   collapsed: boolean;
   onOpenCharacterPanel?: () => void;
   onOpenLorebookPanel?: () => void;
-  onOpenPromptPanel?: () => void;
+  
 }
 
 export function SidebarNavigation({ 
     collapsed,
     onOpenCharacterPanel, 
     onOpenLorebookPanel, 
-    onOpenPromptPanel 
+    
 }: SidebarNavigationProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -38,7 +38,7 @@ export function SidebarNavigation({
                         onClick={() => {
                             if (item.href === "/character-setup" && onOpenCharacterPanel) return onOpenCharacterPanel();
                             if (item.href === "/lorebook" && onOpenLorebookPanel) return onOpenLorebookPanel();
-                            if (item.href === "/prompts" && onOpenPromptPanel) return onOpenPromptPanel(); 
+                             
                             router.push(item.href);
                         }}
                         className={`

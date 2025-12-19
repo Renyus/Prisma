@@ -14,20 +14,20 @@ type SidebarProps = {
   onNewChat?: () => void;
   onOpenCharacterPanel?: () => void;
   onOpenLorebookPanel?: () => void;
-  onOpenPromptPanel?: () => void;
+  
 };
 
 export default function Sidebar({
   onNewChat,
   onOpenCharacterPanel,
   onOpenLorebookPanel,
-  onOpenPromptPanel, 
+   
 }: SidebarProps) {
   const isMounted = useMounted();
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   const {
-      isClearingCurrent, isExporting, currentCard, currentBook, currentPreset,
+      isClearingCurrent, isExporting, currentCharacter, currentBook, currentPreset,
       contextMessages, contextTokens,
       memoryEnabled, memoryLimit,
       temperature, topP, frequencyPenalty, maxTokens,
@@ -75,7 +75,7 @@ export default function Sidebar({
                 collapsed={isCollapsed}
                 onOpenCharacterPanel={onOpenCharacterPanel}
                 onOpenLorebookPanel={onOpenLorebookPanel}
-                onOpenPromptPanel={onOpenPromptPanel}
+                
             />
         </div>
 
@@ -89,7 +89,7 @@ export default function Sidebar({
                     className="flex-1 overflow-y-auto px-4 py-2 custom-scrollbar"
                 >
                     <SidebarSettings 
-                        currentCard={currentCard}
+                        currentCharacter={currentCharacter}
                         currentBook={currentBook}
                         contextMessages={contextMessages}
                         contextTokens={contextTokens}
@@ -99,14 +99,14 @@ export default function Sidebar({
                         topP={topP}
                         frequencyPenalty={frequencyPenalty}
                         maxTokens={maxTokens}
-                        setPreset={setPreset}
+                        
                         setMemoryEnabled={setMemoryEnabled}
                         setMemoryLimit={setMemoryLimit}
                         setTemperature={setTemperature}
                         setTopP={setTopP}
                         setFrequencyPenalty={setFrequencyPenalty}
                         setMaxTokens={setMaxTokens}
-                        currentPreset={currentPreset}
+                        
                     />
                 </motion.div>
             )}

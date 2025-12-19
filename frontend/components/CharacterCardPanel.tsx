@@ -18,11 +18,11 @@ export function CharacterCardPanel({ open, onClose }: Props) {
   
   const {
       // Data
-      currentCardId, currentCard, filteredCards,
+      currentCharacterId, currentCharacter, filteredCharacters, // Renamed
       search, toast, renamingId, tempName, editCardId, editForm,
       // Actions
       setSearch, setTempName, setEditForm,
-      setCurrentCard, handleImport,
+      setCurrentCharacter, handleImport, // Renamed
       startRename, saveRename, cancelRename,
       openEditModal, saveEditModal, closeEditModal,
       handleDelete
@@ -58,7 +58,7 @@ export function CharacterCardPanel({ open, onClose }: Props) {
                 </div>
                 <div>
                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Active</div>
-                   <div className="text-sm font-semibold text-[#1f1f1f]">{currentCard?.name || "No Character Selected"}</div>
+                   <div className="text-sm font-semibold text-[#1f1f1f]">{currentCharacter?.name || "No Character Selected"}</div>
                 </div>
              </div>
           </div>
@@ -100,14 +100,14 @@ export function CharacterCardPanel({ open, onClose }: Props) {
 
           {/* 列表区域 */}
           <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-6 space-y-1">
-            {filteredCards.length === 0 ? (
+            {filteredCharacters.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-gray-400">
                     <Users size={48} className="mb-2 opacity-20" />
                     <p>暂无角色卡</p>
                 </div>
             ) : (
-                filteredCards.map((card) => {
-                const applied = currentCardId === card.id;
+                filteredCharacters.map((card) => { // Variable name 'card' is fine, represents a character
+                const applied = currentCharacterId === card.id;
                 return (
                     <div
                     key={card.id}
@@ -163,7 +163,7 @@ export function CharacterCardPanel({ open, onClose }: Props) {
                         
                         {!applied && (
                             <button
-                                onClick={(e) => { e.stopPropagation(); setCurrentCard(card.id); }}
+                                onClick={(e) => { e.stopPropagation(); setCurrentCharacter(card.id); }} // Renamed
                                 className="ml-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all"
                             >
                                 Select
@@ -199,17 +199,17 @@ export function CharacterCardPanel({ open, onClose }: Props) {
             <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2 pb-2">
               <Field label="Name" value={editForm.name} onChange={(v: string) => setEditForm((s) => ({ ...s, name: v }))} />
               <Field label="Description" textarea value={editForm.description} onChange={(v: string) => setEditForm((s) => ({ ...s, description: v }))} />
-              <Field label="First Message" textarea value={editForm.first_mes} onChange={(v: string) => setEditForm((s) => ({ ...s, first_mes: v }))} />
-              <Field label="System Prompt" textarea value={editForm.system_prompt} onChange={(v: string) => setEditForm((s) => ({ ...s, system_prompt: v }))} />
+              {/* Updated fields to match new schema/controller */}
+              <Field label="First Message" textarea value={editForm.first_message} onChange={(v: string) => setEditForm((s) => ({ ...s, first_message: v }))} /> 
+              <Field label="System Prompt Override" textarea value={editForm.system_prompt_override} onChange={(v: string) => setEditForm((s) => ({ ...s, system_prompt_override: v }))} />
               <div className="grid grid-cols-2 gap-4">
                   <Field label="Persona" textarea value={editForm.persona} onChange={(v: string) => setEditForm((s) => ({ ...s, persona: v }))} />
                   <Field label="Scenario" textarea value={editForm.scenario} onChange={(v: string) => setEditForm((s) => ({ ...s, scenario: v }))} />
               </div>
-              <Field label="Creator Notes" textarea value={editForm.creator_notes} onChange={(v: string) => setEditForm((s) => ({ ...s, creator_notes: v }))} />
+              <Field label="Creator" textarea value={editForm.creator} onChange={(v: string) => setEditForm((s) => ({ ...s, creator: v }))} />
               <Field label="Tags" value={editForm.tags} onChange={(v: string) => setEditForm((s) => ({ ...s, tags: v }))} />
-              <Field label="User Alias" value={editForm.user_alias} onChange={(v: string) => setEditForm((s) => ({ ...s, user_alias: v }))} />
-              <Field label="Alternate Greetings (one per line)" textarea value={editForm.alternate_greetings} onChange={(v: string) => setEditForm((s) => ({ ...s, alternate_greetings: v }))} />
-              <Field label="Source Filename" value={editForm.source_filename} onChange={(v: string) => setEditForm((s) => ({ ...s, source_filename: v }))} />
+              <Field label="Avatar URL" value={editForm.avatar_url} onChange={(v: string) => setEditForm((s) => ({ ...s, avatar_url: v }))} />
+              {/* Removed fields not in editForm anymore: user_alias, alternate_greetings, source_filename */}
             </div>
              <div className="mt-6 flex justify-end gap-3">
                <button onClick={closeEditModal} className="px-6 py-2.5 rounded-full text-gray-600 hover:bg-gray-100 font-medium transition">Cancel</button>

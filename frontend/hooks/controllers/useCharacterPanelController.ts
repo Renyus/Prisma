@@ -2,16 +2,17 @@ import { useState, useMemo, useRef } from "react";
 import { useCharacterCardStore } from "@/store/useCharacterCardStore";
 import { extractPngJson } from "@/lib/pngCard";
 import { processCharacterImport } from "@/lib/characterImporter";
+import type { CharacterUpdate } from "@/types/character";
 
 export function useCharacterPanelController() {
     const {
-        characterCards,
-        currentCardId,
-        addCardFromTavernJson,
-        updateCard,
-        deleteCard,
-        setCurrentCard,
-        addCard // Assuming raw add is available or handled by wrapper
+        characters, // Renamed
+        currentCharacterId, // Renamed
+        addCharacterFromTavernJson, // Renamed
+        updateCharacter, // Renamed
+        deleteCharacter, // Renamed
+        setCurrentCharacter, // Renamed
+        addCharacter // Renamed
     } = useCharacterCardStore();
 
     // --- Local State ---
@@ -21,36 +22,38 @@ export function useCharacterPanelController() {
     const [tempName, setTempName] = useState("");
     const [editCardId, setEditCardId] = useState<string | null>(null);
     
-    // Edit Form State
+    // Edit Form State - Adjusted keys for new model
     const [editForm, setEditForm] = useState({
         name: "",
         description: "",
         persona: "",
         scenario: "",
-        first_mes: "",
-        system_prompt: "",
-        creator_notes: "",
+        first_message: "", // Renamed
+        // system_prompt: "", // DEPRECATED/MOVED to prompt_config. Logic needed.
+        system_prompt_override: "", // New field for simple override
+        creator: "", // Renamed from creator_notes
         tags: "",
-        user_alias: "",
-        alternate_greetings: "",
-        source_filename: "",
+        // user_alias: "", // DEPRECATED? Not in new schema directly, maybe part of metadata or prompt logic?
+        // alternate_greetings: "", // Not in basic schema, maybe prompt_config?
+        // source_filename: "", // Not in new schema
+        avatar_url: "",
     });
 
     // --- Derived State ---
-    const currentCard = useMemo(() => {
-        if (!currentCardId) return null;
-        return characterCards.find((c) => c.id === currentCardId) ?? null;
-    }, [characterCards, currentCardId]);
+    const currentCharacter = useMemo(() => { // Renamed
+        if (!currentCharacterId) return null;
+        return characters.find((c) => c.id === currentCharacterId) ?? null;
+    }, [characters, currentCharacterId]);
 
-    const filteredCards = useMemo(() => {
+    const filteredCharacters = useMemo(() => { // Renamed
         const q = search.toLowerCase();
-        if (!q) return characterCards;
-        return characterCards.filter((c) => {
+        if (!q) return characters;
+        return characters.filter((c) => {
             const nameText = (c.name || "").toLowerCase();
             const tagText = Array.isArray(c.tags) ? c.tags.join(" ").toLowerCase() : "";
             return nameText.includes(q) || tagText.includes(q);
         });
-    }, [characterCards, search]);
+    }, [characters, search]);
 
     // --- Logic Actions ---
 
@@ -60,18 +63,6 @@ export function useCharacterPanelController() {
             const result = await processCharacterImport(file);
             
             if (result && result.character) {
-                // If the store supports adding raw object, good. 
-                // Currently store has addCardFromTavernJson. We might need to adapt.
-                // Assuming addCardFromTavernJson takes the raw data. 
-                // Let's use the legacy method for now if store isn't updated, 
-                // OR use addCard directly if we have the full object.
-                // The store method addCardFromTavernJson likely does some parsing.
-                // To be safe with existing store:
-                
-                // Let's try to extract raw JSON string again for legacy compatibility 
-                // or just pass the parsed data if store accepts it.
-                // Looking at typical store implementation: it expects the data object.
-                
                 // Re-using the logic from the component:
                 let jsonString: string | null = null;
                 if (file.name.toLowerCase().endsWith(".png")) {
@@ -83,10 +74,8 @@ export function useCharacterPanelController() {
                 if (!jsonString) throw new Error("未找到角色卡数据");
                 const parsed = JSON.parse(jsonString);
                 const data = parsed.data ?? parsed;
-                addCardFromTavernJson(data, file.name);
+                addCharacterFromTavernJson(data, file.name); // Renamed
 
-                // TODO: Handle Lorebook import from result if needed in future
-                
                 setToast("导入成功");
             } else {
                  throw new Error("解析失败");
@@ -105,8 +94,8 @@ export function useCharacterPanelController() {
 
     const saveRename = (id: string) => {
         const name = tempName.trim() || "未命名角色";
-        updateCard(id, { name });
-        if(currentCardId === id) setCurrentCard(id); // Ensure active
+        updateCharacter(id, { name }); // Renamed
+        if(currentCharacterId === id) setCurrentCharacter(id); // Ensure active
         setRenamingId(null);
         setTempName("");
     };
@@ -116,61 +105,60 @@ export function useCharacterPanelController() {
         setTempName("");
     };
 
-    const openEditModal = (cardId: string) => {
-        const card = characterCards.find((c) => c.id === cardId);
-        if (!card) return;
-        setEditCardId(cardId);
+    const openEditModal = (characterId: string) => {
+        const character = characters.find((c) => c.id === characterId);
+        if (!character) return;
+        setEditCardId(characterId);
         setEditForm({
-            name: card.name || "",
-            description: card.description || "",
-            persona: card.persona || "",
-            scenario: card.scenario || "",
-            first_mes: card.first_mes || "",
-            system_prompt: card.system_prompt || "",
-            creator_notes: card.creator_notes || "",
-            tags: Array.isArray(card.tags) ? card.tags.join(", ") : "",
-            user_alias: card.user_alias || "",
-            alternate_greetings: Array.isArray(card.alternate_greetings) ? card.alternate_greetings.join('\n') : "",
-            source_filename: card.source_filename || "",
+            name: character.name || "",
+            description: character.description || "",
+            persona: character.persona || "",
+            scenario: character.scenario || "",
+            first_message: character.first_message || "",
+            system_prompt_override: character.system_prompt_override || "",
+            creator: character.creator || "",
+            tags: Array.isArray(character.tags) ? character.tags.join(", ") : "",
+            avatar_url: character.avatar_url || "",
         });
     };
 
     const saveEditModal = () => {
         if (!editCardId) return;
-        const { name, description, persona, scenario, first_mes, system_prompt, creator_notes, tags, user_alias, alternate_greetings, source_filename } = editForm;
-        updateCard(editCardId, {
+        const { name, description, persona, scenario, first_message, system_prompt_override, creator, tags, avatar_url } = editForm;
+        
+        const updatePayload: CharacterUpdate = {
             name: name.trim() || "未命名角色",
             description,
             persona,
             scenario,
-            first_mes,
-            system_prompt,
-            creator_notes,
+            first_message,
+            system_prompt_override,
+            creator,
             tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-            user_alias,
-            alternate_greetings: alternate_greetings.split('\n').map((g) => g.trim()).filter(Boolean),
-            source_filename,
-        });
-        setCurrentCard(editCardId);
+            avatar_url,
+        };
+
+        updateCharacter(editCardId, updatePayload); // Renamed
+        setCurrentCharacter(editCardId);
         setEditCardId(null);
     };
 
     const handleDelete = (id: string) => {
-        deleteCard(id);
-        if (currentCardId === id) {
-            const nextId = characterCards.filter((c) => c.id !== id)[0]?.id ?? null;
-            setCurrentCard(nextId ?? null);
+        deleteCharacter(id); // Renamed
+        if (currentCharacterId === id) {
+            const nextId = characters.filter((c) => c.id !== id)[0]?.id ?? null;
+            setCurrentCharacter(nextId ?? null);
         }
     };
 
     return {
         // Data
-        characterCards, currentCardId, currentCard, filteredCards,
+        characters, currentCharacterId, currentCharacter, filteredCharacters,
         search, toast, renamingId, tempName, editCardId, editForm,
         
         // Actions
         setSearch, setTempName, setEditForm,
-        setCurrentCard, handleImport,
+        setCurrentCharacter, handleImport,
         startRename, saveRename, cancelRename,
         openEditModal, saveEditModal, closeEditModal: () => setEditCardId(null),
         handleDelete

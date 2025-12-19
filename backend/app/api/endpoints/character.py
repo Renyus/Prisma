@@ -1,32 +1,21 @@
-# backend/app/api/endpoints/character.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-
-from app.db.session import get_db
-from app.schemas.character import CharacterCardResponse, CharacterCardCreate, CharacterCardUpdate
-from app.crud import character as crud_character
+from app.core.database import get_db
+from app.modules.character import service
+from app.schemas.character import TavernCardV3
 
 router = APIRouter()
 
-@router.get("/", response_model=List[CharacterCardResponse])
-def read_cards(db: Session = Depends(get_db)):
-    return crud_character.get_cards(db)
+@router.post("/upload", summary="上传角色卡")
+def upload_character(card: TavernCardV3, db: Session = Depends(get_db)):
+    # card 参数会自动把前端传来的 JSON 校验并转成对象
+    # 我们把它转回 dict 传给 service
+    return service.create_character(db, card.model_dump())
 
-@router.post("/", response_model=CharacterCardResponse)
-def create_card(card: CharacterCardCreate, db: Session = Depends(get_db)):
-    return crud_character.create_card(db, card)
-
-@router.patch("/{card_id}", response_model=CharacterCardResponse)
-def update_card(card_id: str, card: CharacterCardUpdate, db: Session = Depends(get_db)):
-    db_card = crud_character.update_card(db, card_id, card)
-    if not db_card:
-        raise HTTPException(status_code=404, detail="Character card not found")
-    return db_card
-
-@router.delete("/{card_id}")
-def delete_card(card_id: str, db: Session = Depends(get_db)):
-    success = crud_character.delete_card(db, card_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Character card not found")
-    return {"status": "success"}
+@router.get("/{char_id}", summary="获取角色卡")
+def read_character(char_id: int, db: Session = Depends(get_db)):
+    db_char = service.get_character(db, char_id)
+    if db_char is None:
+        raise HTTPException(status_code=404, detail="Character not found")
+    # 注意：这里直接返回数据库对象，FastAPI 会自动把它转成 JSON
+    return db_char

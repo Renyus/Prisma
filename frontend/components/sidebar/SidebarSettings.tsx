@@ -4,61 +4,62 @@ import { useState, useEffect } from "react";
 import { Info, SquareStack, FlaskConical, BookOpen, Zap, Thermometer, Activity } from "lucide-react";
 
 interface SidebarSettingsProps {
-    currentCard: any;
+    currentCharacter: any;
     currentBook: any;
+
     contextMessages: number;
     contextTokens: number;
+    
+    // Memory
     memoryEnabled: boolean;
-    memoryLimit: number;
-    temperature: number;
-    topP: number;
-    frequencyPenalty: number;
-    maxTokens: number;
-    
-    // Actions
-    setPreset: (preset: "light" | "normal" | "long") => void;
     setMemoryEnabled: (v: boolean) => void;
+    memoryLimit: number;
     setMemoryLimit: (v: number) => void;
+
+    // Model Params
+    temperature: number;
     setTemperature: (v: number) => void;
+    topP: number;
     setTopP: (v: number) => void;
+    frequencyPenalty: number;
     setFrequencyPenalty: (v: number) => void;
+    maxTokens: number;
     setMaxTokens: (v: number) => void;
-    
-    currentPreset: "light" | "normal" | "long";
 }
 
 export function SidebarSettings({
-    currentCard, currentBook,
+    currentCharacter, currentBook,
     contextMessages, contextTokens,
-    memoryEnabled, memoryLimit,
-    temperature, topP, frequencyPenalty, maxTokens,
-    setPreset, setMemoryEnabled, setMemoryLimit,
-    setTemperature, setTopP, setFrequencyPenalty, setMaxTokens,
-    currentPreset
+    memoryEnabled, setMemoryEnabled,
+    memoryLimit, setMemoryLimit,
+    temperature, setTemperature,
+    topP, setTopP,
+    frequencyPenalty, setFrequencyPenalty,
+    maxTokens, setMaxTokens
 }: SidebarSettingsProps) {
 
-    // M3 风格 Chip 按钮
-    const presetBtnClass = (k: "light" | "normal" | "long") =>
-        [
-          "flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200",
-          currentPreset === k
-            ? "bg-[#D3E3FD] text-[#041E49] shadow-sm" // Google Active Blue
-            : "bg-transparent text-[#444746] hover:bg-gray-100",
-        ].join(" ");
+    // 快捷预设 (影响 Context Length)
+    const setPreset = (type: "light" | "normal" | "long") => {
+        // 这里只是简单的视觉/逻辑示例，实际应去修改上层传入的 context 限制
+        // 目前先假装它是只读展示，或者你可以通过 props 传入 setContextLimit
+        console.log("Set preset:", type);
+    };
+
+    const presetBtnClass = (type: string) => `
+        flex-1 py-1.5 rounded-xl text-xs font-medium transition-all duration-200
+        hover:bg-white hover:shadow-sm text-gray-500 hover:text-[#1F1F1F]
+    `;
 
     return (
-      <div className="space-y-4 pb-6">
-        {/* 状态卡片 */}
-        <div className="bg-white rounded-[20px] p-4 shadow-sm">
-             <div className="flex items-center gap-2 mb-3 text-[11px] font-bold text-[#444746] uppercase tracking-wider opacity-60">
-                <Info size={12} />
-                <span>当前进程</span>
-             </div>
-             <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
-                    <span className="text-sm text-[#444746]">角色</span>
-                    <span className="text-sm  text-[#1F1F1F] truncate flex-1 text-right">{currentCard?.name || "未选择"}</span>
+      <div className="space-y-4 px-1 py-2">
+        
+        {/* 当前状态概览 (Information Density Optimized) */}
+        <div className="bg-white rounded-[20px] p-4 shadow-sm border border-gray-100/50">
+             <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 border-b border-gray-50 pb-2">
+                    <div className={`w-2 h-2 rounded-full ${currentCharacter ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-gray-300"}`}></div>
+                    <span className="text-sm text-[#444746]">角色卡</span>
+                    <span className="text-sm  text-[#1F1F1F] truncate flex-1 text-right">{currentCharacter?.name || "未选择"}</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${currentBook?.enabled!==false ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" : "bg-gray-300"}`}></div>

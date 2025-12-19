@@ -6,67 +6,61 @@ import { CharacterSection } from "@/components/character/CharacterSection";
 import { TextArea, TextInput } from "@/components/character/Inputs";
 import { extractPngJson } from "@/lib/pngCard";
 import { useCharacterCardStore } from "@/store/useCharacterCardStore";
+import type { CharacterUpdate, CharacterCreate } from "@/types/character";
 
 export default function CharacterSetupPage() {
-  const characterCards = useCharacterCardStore((s) => s.characterCards);
-  const currentCardId = useCharacterCardStore((s) => s.currentCardId);
-  const addCardFromTavernJson = useCharacterCardStore((s) => s.addCardFromTavernJson);
-  const updateCard = useCharacterCardStore((s) => s.updateCard);
-  const deleteCard = useCharacterCardStore((s) => s.deleteCard);
-  const setCurrentCard = useCharacterCardStore((s) => s.setCurrentCard);
-  const fetchCards = useCharacterCardStore((s) => s.fetchCards);
+  const characters = useCharacterCardStore((s) => s.characters); // Renamed
+  const currentCharacterId = useCharacterCardStore((s) => s.currentCharacterId); // Renamed
+  const addCharacterFromTavernJson = useCharacterCardStore((s) => s.addCharacterFromTavernJson); // Renamed
+  const updateCharacter = useCharacterCardStore((s) => s.updateCharacter); // Renamed
+  const deleteCharacter = useCharacterCardStore((s) => s.deleteCharacter); // Renamed
+  const setCurrentCharacter = useCharacterCardStore((s) => s.setCurrentCharacter); // Renamed
+  const fetchCharacters = useCharacterCardStore((s) => s.fetchCharacters); // Renamed
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCards();
-  }, [fetchCards]);
+    fetchCharacters();
+  }, [fetchCharacters]);
 
   useEffect(() => {
-    if (!currentCardId && characterCards.length > 0) {
-      setCurrentCard(characterCards[0].id);
+    if (!currentCharacterId && characters.length > 0) {
+      setCurrentCharacter(characters[0].id);
     }
-  }, [characterCards, currentCardId, setCurrentCard]);
+  }, [characters, currentCharacterId, setCurrentCharacter]);
 
-  const currentCard = useMemo(
-    () => (currentCardId ? characterCards.find((c) => c.id === currentCardId) ?? null : null),
-    [characterCards, currentCardId]
+  const currentCharacter = useMemo(
+    () => (currentCharacterId ? characters.find((c) => c.id === currentCharacterId) ?? null : null),
+    [characters, currentCharacterId]
   );
 
   const get = useMemo(() => {
-    return (key: keyof NonNullable<typeof currentCard>) => {
-      if (!currentCard) return "";
-      return (currentCard as any)[key] ?? "";
+    return (key: keyof NonNullable<typeof currentCharacter>) => {
+      if (!currentCharacter) return "";
+      return (currentCharacter as any)[key] ?? "";
     };
-  }, [currentCard]);
+  }, [currentCharacter]);
 
   const ensureCurrent = () => {
-    if (!currentCardId && characterCards[0]) {
-      setCurrentCard(characterCards[0].id);
-      return characterCards[0].id;
+    if (!currentCharacterId && characters[0]) {
+      setCurrentCharacter(characters[0].id);
+      return characters[0].id;
     }
-    return currentCardId;
+    return currentCharacterId;
   };
 
-  const updateField = (key: keyof NonNullable<typeof currentCard>, value: any) => {
+  const updateField = (key: string, value: any) => {
     const id = ensureCurrent();
     if (!id) {
-      const temp = {
-        name: "未命名角色",
-        description: "",
-        persona: "",
-        scenario: "",
-        first_mes: "",
-        system_prompt: "",
-        creator_notes: "",
-        tags: [],
-      };
-      addCardFromTavernJson(temp);
-      return;
+        // Handle creation via form if no current card (simplified)
+        // In real app, might want explicit 'New' button
+        // For now, let's just warn or return
+        return;
     }
-    updateCard(id, { [key]: value } as any);
+    // Type casting for generic update
+    updateCharacter(id, { [key]: value } as any);
   };
 
   useEffect(() => {
@@ -92,7 +86,7 @@ export default function CharacterSetupPage() {
       if (!jsonString) throw new Error("未找到角色卡数据");
       const parsed = JSON.parse(jsonString);
       const data = parsed.data ?? parsed;
-      addCardFromTavernJson(data, file.name);
+      addCharacterFromTavernJson(data, file.name); // Renamed
       triggerToast("导入成功");
     } catch (e) {
       console.error(e);
@@ -122,7 +116,7 @@ export default function CharacterSetupPage() {
               }}
               className="px-4 py-2 rounded-[999px] border border-gray-200 bg-white text-sm text-gray-800 shadow-sm transition hover:bg-gray-100"
             >
-              {currentCard?.name || "选择角色卡"}
+              {currentCharacter?.name || "选择角色卡"}
             </button>
             {dropdownOpen && (
               <div
@@ -130,17 +124,17 @@ export default function CharacterSetupPage() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="max-h-64 overflow-y-auto py-2">
-                  {characterCards.map((card) => (
+                  {characters.map((card) => (
                     <div
                       key={card.id}
                       className={`flex items-center justify-between px-3 py-2 text-sm ${
-                        card.id === currentCardId ? "bg-gray-100" : "hover:bg-gray-50"
+                        card.id === currentCharacterId ? "bg-gray-100" : "hover:bg-gray-50"
                       }`}
                     >
                       <button
                         className="text-left flex-1 truncate"
                         onClick={() => {
-                          setCurrentCard(card.id);
+                          setCurrentCharacter(card.id); // Renamed
                           setDropdownOpen(false);
                         }}
                       >
@@ -149,10 +143,10 @@ export default function CharacterSetupPage() {
                       <button
                         className="p-1 text-gray-500 hover:text-red-500"
                         onClick={() => {
-                          deleteCard(card.id);
-                          if (card.id === currentCardId) {
-                            const next = characterCards.find((c) => c.id !== card.id);
-                            setCurrentCard(next?.id ?? null);
+                          deleteCharacter(card.id); // Renamed
+                          if (card.id === currentCharacterId) {
+                            const next = characters.find((c) => c.id !== card.id);
+                            setCurrentCharacter(next?.id ?? null);
                           }
                         }}
                       >
@@ -160,7 +154,7 @@ export default function CharacterSetupPage() {
                       </button>
                     </div>
                   ))}
-                  {characterCards.length === 0 && (
+                  {characters.length === 0 && (
                     <div className="px-3 py-2 text-xs text-gray-500">暂无角色卡</div>
                   )}
                 </div>
@@ -204,23 +198,24 @@ export default function CharacterSetupPage() {
             value={get("scenario")}
             onChange={(e) => updateField("scenario", e.target.value)}
           />
+          {/* Updated fields to match new schema */}
           <TextArea
-            label="起始消息（first_mes）"
+            label="起始消息（first_message）" // Updated label and key
             rows={3}
-            value={get("first_mes")}
-            onChange={(e) => updateField("first_mes", e.target.value)}
+            value={get("first_message")}
+            onChange={(e) => updateField("first_message", e.target.value)}
           />
           <TextArea
-            label="系统提示（system_prompt）"
+            label="系统提示覆盖（system_prompt_override）" // Updated label and key
             rows={3}
-            value={get("system_prompt")}
-            onChange={(e) => updateField("system_prompt", e.target.value)}
+            value={get("system_prompt_override")}
+            onChange={(e) => updateField("system_prompt_override", e.target.value)}
           />
           <TextArea
-            label="作者备注（creator_notes）"
+            label="创建者（creator）" // Updated label and key
             rows={3}
-            value={get("creator_notes")}
-            onChange={(e) => updateField("creator_notes", e.target.value)}
+            value={get("creator")}
+            onChange={(e) => updateField("creator", e.target.value)}
           />
           <TextInput
             label="标签（逗号分隔）"
@@ -236,29 +231,12 @@ export default function CharacterSetupPage() {
               )
             }
           />
+          {/* Removed legacy fields from UI: user_alias, alternate_greetings, source_filename */}
+          {/* Added Avatar URL if needed */}
           <TextInput
-            label="用户别名（user_alias）"
-            value={get("user_alias")}
-            onChange={(e) => updateField("user_alias", e.target.value)}
-          />
-          <TextArea
-            label="备用问候语（alternate_greetings，每行一个）"
-            rows={4}
-            value={Array.isArray(get("alternate_greetings")) ? (get("alternate_greetings") as string[]).join("\n") : ""}
-            onChange={(e) =>
-              updateField(
-                "alternate_greetings",
-                e.target.value
-                  .split("\n")
-                  .map((g) => g.trim())
-                  .filter(Boolean)
-              )
-            }
-          />
-          <TextInput
-            label="源文件名（source_filename）"
-            value={get("source_filename")}
-            onChange={(e) => updateField("source_filename", e.target.value)}
+            label="头像 URL"
+            value={get("avatar_url")}
+            onChange={(e) => updateField("avatar_url", e.target.value)}
           />
         </CharacterSection>
 

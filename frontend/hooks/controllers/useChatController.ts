@@ -8,8 +8,8 @@ import { Lorebook } from "@/types/lorebook";
 
 export function useChatController() {
     // --- Stores ---
-    const characterCards = useCharacterCardStore((s) => s.characterCards);
-    const currentCardId = useCharacterCardStore((s) => s.currentCardId);
+    const characters = useCharacterCardStore((s) => s.characters); // Renamed
+    const currentCharacterId = useCharacterCardStore((s) => s.currentCharacterId); // Renamed
     const lorebooks = useLorebookStore((s) => s.lorebooks);
     const currentBookId = useLorebookStore((s) => s.currentBookId);
     
@@ -29,17 +29,17 @@ export function useChatController() {
     const chatHistory = useChatHistory();
 
     // --- Derived State ---
-    const currentCard = useMemo(() => {
-        if (!currentCardId) return null;
-        return characterCards.find((c) => c.id === currentCardId) ?? null;
-    }, [characterCards, currentCardId]);
+    const currentCharacter = useMemo(() => { // Renamed
+        if (!currentCharacterId) return null;
+        return characters.find((c) => c.id === currentCharacterId) ?? null;
+    }, [characters, currentCharacterId]);
 
     const activeLorebook: Lorebook | null = useMemo(() => {
         if (!currentBookId) return null;
         return lorebooks.find((b) => b.id === currentBookId) ?? null;
     }, [lorebooks, currentBookId]);
 
-    const title = useMemo(() => currentCard ? "Prisma" : "Prisma", [currentCard]);
+    const title = useMemo(() => currentCharacter ? "Prisma" : "Prisma", [currentCharacter]);
 
     // --- Chat Settings for sendMessage ---
     const chatSettings = useMemo(() => ({
@@ -60,34 +60,44 @@ export function useChatController() {
 
     // --- Main Actions ---
     const handleSend = async (text: string, scrollToBottom: () => void) => {
-        // 发送消息 - 触发条目处理逻辑已在 useChatHistory.ts 中完成
+        // chatHistory.sendMessage now handles message sending
+        // Note: chatHistory needs to be updated to use new Session API
+        if (!currentCharacterId) {
+             console.warn("Cannot send message: no character selected.");
+             return;
+        }
+
         await chatHistory.sendMessage(
             text, 
             chatSettings, 
             activeLorebook, 
             userName, 
+            currentCharacterId, // Pass characterId to create session if needed
             scrollToBottom
         );
     };
 
-    const startNewChat = () => {
-        chatHistory.startNewChat(userName);
+    const startNewChat = async () => {
+         if (!currentCharacterId) return;
+         await chatHistory.startNewChat(currentCharacterId); // Pass characterId
     };
 
     const reloadHistory = async (): Promise<void> => {
-        await chatHistory.loadHistory(userName);
+        // Reloading history now means fetching messages for the active session
+        // This logic will be inside useChatHistory
+        await chatHistory.loadHistory(); 
     };
 
     // --- Actions Exposed ---
     return {
         // Data from separated concerns
         ...modelStatus,  // activeModelInfo, availableModels, displayedModelName, etc.
-        ...chatHistory,  // messages, isSending, lastUsedLore, triggeredEntries, tokenStats
+        ...chatHistory,  // messages, isSending, lastUsedLore, triggeredEntries, tokenStats, activeSessionId
         
         // Core chat controller data
         title,
         userName,
-        currentCard,
+        currentCharacter, // Renamed
         activeLorebook,
         
         // Core actions

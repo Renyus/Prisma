@@ -2,74 +2,110 @@ import { useState, useCallback, useEffect } from "react";
 import { nanoid } from "nanoid";
 import { useCharacterCardStore } from "@/store/useCharacterCardStore";
 import { ChatService } from "@/services/ChatService";
-import { ChatMessageModel } from "@/components/ChatMessage";
+import { ChatMessageModel } from "@/components/ChatMessage"; // Still using UI model for display
 import { parseThinkingContent } from "@/lib/chatUtils";
 import { replacePlaceholders } from "@/lib/placeholderUtils";
-import type { TokenStats, TriggeredLoreEntry } from "@/lib/types";
+import type { TokenStats, TriggeredLoreEntry } from "@/lib/types"; // These types might need to be sourced from V2 types or mapped
+import { ChatMessage, MessageRole } from "@/types/chat"; // New V2 Types
 
 export function useChatHistory() {
     // Stores
-    const characterCards = useCharacterCardStore((s) => s.characterCards);
-    const currentCardId = useCharacterCardStore((s) => s.currentCardId);
+    const characters = useCharacterCardStore((s) => s.characters); // Renamed
+    const currentCharacterId = useCharacterCardStore((s) => s.currentCharacterId); // Renamed
 
     // Local State
-    const [messages, setMessages] = useState<ChatMessageModel[]>([]);
+    const [messages, setMessages] = useState<ChatMessageModel[]>([]); // Display messages (with loading state etc)
     const [isSending, setIsSending] = useState(false);
     const [lastUsedLore, setLastUsedLore] = useState<string | null>(null);
     const [tokenStats, setTokenStats] = useState<TokenStats | null>(null);
     const [triggeredEntries, setTriggeredEntries] = useState<TriggeredLoreEntry[] | null>(null);
+    
+    // New Session State
+    const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
     const LOCAL_USER_ID = "local-user";
 
     // Derived State
-    const currentCard = useCallback(() => {
-        if (!currentCardId) return null;
-        return characterCards.find((c) => c.id === currentCardId) ?? null;
-    }, [characterCards, currentCardId]);
+    const currentCharacter = useCallback(() => { // Renamed
+        if (!currentCharacterId) return null;
+        return characters.find((c) => c.id === currentCharacterId) ?? null;
+    }, [characters, currentCharacterId]);
 
     // Message processing logic - 支持所有占位符类型
     const processMessageContent = useCallback((text: string, userName?: string) => {
         if (!text) return "";
         
-        const card = currentCard();
-        const charName = card?.name || "Character";
+        const character = currentCharacter();
+        const charName = character?.name || "Character";
         const finalUserName = userName?.trim() || "User";
         
         return replacePlaceholders(text, finalUserName, charName);
-    }, [currentCard]);
+    }, [currentCharacter]);
+
+    // Ensure Active Session
+    const ensureSession = useCallback(async (charId: string, userId: string): Promise<string> => {
+        // Simple logic: check if we have a session for this char.
+        // If not, create one.
+        // In a real app, we might select from a list. Here we just grab the latest or create new.
+        try {
+            const sessions = await ChatService.getSessions();
+            const existing = sessions.find(s => s.character_id === charId && s.user_id === userId);
+            
+            if (existing) {
+                setActiveSessionId(existing.id);
+                return existing.id;
+            }
+            
+            // Create new
+            const newSession = await ChatService.createSession(charId, "New Chat");
+            setActiveSessionId(newSession.id);
+            return newSession.id;
+        } catch (e) {
+            console.error("Failed to ensure session", e);
+            throw e;
+        }
+    }, []);
+
 
     // Load chat history
+    // Now loads from Session messages
     const loadHistory = useCallback(async (userName?: string): Promise<void> => {
-        const card = currentCard();
-        if (!card) {
+        const character = currentCharacter();
+        if (!character) {
             setMessages([]);
             setLastUsedLore(null);
             setTriggeredEntries(null);
             setTokenStats(null);
+            setActiveSessionId(null);
             return;
         }
 
         try {
-            const data = await ChatService.getHistory({
-                user_id: LOCAL_USER_ID,
-                character_id: card.id,
-            });
+            // 1. Ensure we have a session ID
+            let sessionId = activeSessionId;
+            if (!sessionId) {
+                sessionId = await ensureSession(character.id, LOCAL_USER_ID);
+            }
 
-            if (data.messages.length === 0 && card.first_mes) {
+            // 2. Fetch messages for this session
+            const apiMessages = await ChatService.getMessages(sessionId);
+
+            // 3. Map to UI model
+            if (apiMessages.length === 0 && character.first_message) {
                 setMessages([{ 
                     id: "first-mes-placeholder",
                     role: "assistant",
-                    content: processMessageContent(card.first_mes, userName),
+                    content: processMessageContent(character.first_message, userName),
                     isHistory: true,
                     isLoading: false,
                     isStreaming: false,
                 }]);
             } else {
-                setMessages(data.messages.map((msg) => {
+                setMessages(apiMessages.map((msg) => {
                     const { cleanContent } = parseThinkingContent(msg.content);
                     return {
                         id: msg.id,
-                        role: msg.role === "assistant" ? "assistant" : msg.role === "system" ? "system" : "user",
+                        role: msg.role as "user" | "assistant" | "system",
                         content: processMessageContent(cleanContent, userName),
                         isHistory: true,
                         isLoading: false,
@@ -80,33 +116,32 @@ export function useChatHistory() {
         } catch (error) {
             console.error("加载聊天历史失败:", error);
             setMessages([]);
-            setLastUsedLore(null);
-            setTriggeredEntries(null);
-            setTokenStats(null);
+            // ... reset other stats
         }
-    }, [currentCard, processMessageContent]);
+    }, [currentCharacter, activeSessionId, ensureSession, processMessageContent]);
 
     // Send message
     const sendMessage = useCallback(async (
         text: string, 
         chatSettings: {
-            contextMessages: number;
-            contextTokens: number;
-            currentModel?: string;
-            summaryHistoryLimit: number;
-            temperature: number;
-            topP: number;
-            frequencyPenalty: number;
-            maxTokens: number;
-            memoryEnabled: boolean;
-            memoryLimit: number;
+            // ... settings are currently handled by backend using character config override
+            // but we can pass transient params to completion API if supported
         },
         activeLorebook: any,
         userName?: string,
+        // New params
+        characterId?: string,
         scrollToBottom?: () => void
     ) => {
         const trimmed = text.trim();
         if (!trimmed || isSending) return null;
+
+        // 1. Ensure session
+        let sessionId = activeSessionId;
+        if (!sessionId) {
+            if (!characterId) throw new Error("No character selected to start chat");
+            sessionId = await ensureSession(characterId, LOCAL_USER_ID);
+        }
 
         const userMsg: ChatMessageModel = { id: nanoid(), role: "user", content: trimmed };
         const placeholderId = nanoid();
@@ -114,99 +149,65 @@ export function useChatHistory() {
 
         setMessages((prev) => [...prev, userMsg, pendingReply]);
         setIsSending(true);
+        // Reset stats
         setLastUsedLore(null);
         setTriggeredEntries(null);
         setTokenStats(null);
 
         try {
-            const card = currentCard();
-            if (!card) throw new Error("没有选中的角色卡片");
-
-            const rawEntries: any[] = activeLorebook?.entries ?? [];
-            const mappedLore = activeLorebook?.enabled === false ? [] : rawEntries.map((e) => ({
-                ...e,
-                lorebookId: activeLorebook.id, // Ensure lorebookId is present for vector search
-                key: e.keys && e.keys.length > 0 ? e.keys[0] : "",
-                keywords: e.keys || [],
-            }));
-
-            const data = await ChatService.send({
-                user_id: LOCAL_USER_ID,
-                message: trimmed,
-                card: card,
-                lore: mappedLore,
-                max_context_messages: chatSettings.contextMessages,
-                max_context_tokens: chatSettings.contextTokens,
-                model: chatSettings.currentModel, 
-                summary_history_limit: chatSettings.summaryHistoryLimit,
-                temperature: chatSettings.temperature, 
-                top_p: chatSettings.topP, 
-                frequency_penalty: chatSettings.frequencyPenalty, 
-                max_tokens: chatSettings.maxTokens,
-                memory_config: { enabled: chatSettings.memoryEnabled, limit: chatSettings.memoryLimit }
-            });
-
-            const replyRawText: string = typeof data?.reply === "string" && data.reply.trim().length > 0 ? data.reply : "（AI 没有返回任何内容）";
+            // 2. Call Completion API
+            // Note: The new completion API handles saving the user message AND generating the reply
+            const completionRes = await ChatService.getCompletion(sessionId, trimmed);
+            
+            const replyMsg = completionRes.message;
+            const replyRawText = replyMsg.content || "（AI 没有返回任何内容）";
             const { cleanContent } = parseThinkingContent(replyRawText);
             
-            // Format Lore Preview
-            const loreRaw = data?.usedLore ?? data?.loreBlock;
-            let lorePreview: string | null = null;
-            if (loreRaw) {
-                if (typeof loreRaw === "string") lorePreview = loreRaw.trim() || null;
-                else if (typeof loreRaw === "object" && !Array.isArray(loreRaw)) {
-                    const labelMap: Record<string, string> = { beforeChar: "角色前", afterChar: "角色后", beforeUser: "用户前", afterUser: "用户后" };
-                    const parts: string[] = [];
-                    for (const [k, v] of Object.entries(loreRaw)) {
-                        if (!v) continue;
-                        const t = String(v).trim();
-                        if (t) parts.push(`【${labelMap[k] ?? k}】\n${t}`);
-                    }
-                    lorePreview = parts.length ? parts.join("\n\n") : null;
-                }
-            }
-            setLastUsedLore(lorePreview);
-
-            // Save triggered lore entries - 优先使用后端为UI拼装的数据
-            if (data.triggered_entries && Array.isArray(data.triggered_entries)) {
-                setTriggeredEntries(data.triggered_entries);
-            } 
-            // 如果没有 triggered_entries，则使用原始的 triggeredLoreItems
-            else if (data.triggeredLoreItems && Array.isArray(data.triggeredLoreItems)) {
-                const mappedEntries = data.triggeredLoreItems.map((entry: any) => ({
-                    id: entry.id || entry._id || '',
-                    title: entry.comment || entry.content?.substring(0, 20) + '...' || 'Unknown',
-                    content: entry.content || '',
-                    type: entry.type || (entry.key ? 'keyword' : 'vector'),
-                    priority: entry.priority || 0
-                }));
-                setTriggeredEntries(mappedEntries);
-            }
-
-            // Save token stats
-            if (data.tokenStats) {
-                setTokenStats(data.tokenStats);
+            // 3. Update UI
+            // TODO: Extract token stats and lore info from completionRes.token_stats / meta
+            // For now, simple mapping
+            if (completionRes.token_stats) {
+                 // Map TokenUsage to TokenStats (partial mapping)
+                 setTokenStats({
+                     total: completionRes.token_stats.total_tokens,
+                     user: completionRes.token_stats.prompt_tokens,
+                     system: 0, // Not detailed in V2 yet
+                     history: 0, 
+                     budget_left: 0,
+                     model_limits: {},
+                     lore_budget: 0,
+                     estimation_method: "backend",
+                     smart_context_used: false,
+                     smart_context_tokens: 0
+                 });
             }
 
             setMessages((prev) => prev.map((msg) =>
-                msg.id === placeholderId ? { ...msg, content: processMessageContent(cleanContent, userName), isLoading: false, isStreaming: true } : msg
+                msg.id === placeholderId ? { 
+                    ...msg, 
+                    id: replyMsg.id, // Update with real ID
+                    content: processMessageContent(cleanContent, userName), 
+                    isLoading: false, 
+                    isStreaming: true // Simulate streaming or handle real streaming later
+                } : msg
             ));
             
             if (scrollToBottom) {
                 scrollToBottom();
             }
 
-            return data;
+            return completionRes;
+
         } catch (error: any) {
             console.error("发送失败：", error);
             setMessages((prev) => prev.map((msg) =>
-                msg.id === placeholderId ? { ...msg, content: `Error: ${error.message || "未知错误"}\n请检查后端连接 (Python) 是否正常。`, isLoading: false, isStreaming: false } : msg
+                msg.id === placeholderId ? { ...msg, content: `Error: ${error.message || "未知错误"}`, isLoading: false, isStreaming: false } : msg
             ));
             return null;
         } finally {
             setIsSending(false);
         }
-    }, [isSending, currentCard, processMessageContent]);
+    }, [isSending, activeSessionId, ensureSession, processMessageContent]);
 
     // Handle typing finished
     const handleTypingFinished = useCallback((messageId: string) => {
@@ -214,18 +215,46 @@ export function useChatHistory() {
     }, []);
 
     // Start new chat
-    const startNewChat = useCallback((userName?: string) => {
+    // For V2, this means creating a NEW session
+    const startNewChat = useCallback(async (characterId: string) => {
         setMessages([]);
         setLastUsedLore(null);
         setTriggeredEntries(null);
         setTokenStats(null);
-        loadHistory(userName);
-    }, [loadHistory]);
+        
+        try {
+            // Create a new session explicitly
+            const newSession = await ChatService.createSession(characterId, `Chat ${new Date().toLocaleString()}`);
+            setActiveSessionId(newSession.id);
+            // Don't need to load history, it's empty (except maybe first message)
+            
+            // Manually add first message if exists
+            const character = characters.find(c => c.id === characterId);
+            if (character?.first_message) {
+                 setMessages([{ 
+                    id: "first-mes-placeholder",
+                    role: "assistant",
+                    content: processMessageContent(character.first_message), // User name might be missing here
+                    isHistory: true,
+                    isLoading: false,
+                    isStreaming: false,
+                }]);
+            }
 
-    // Auto-load history when card changes
+        } catch (e) {
+            console.error("Failed to start new chat", e);
+        }
+    }, [characters, processMessageContent]);
+
+    // Auto-load history when active session changes or character changes
+    // This is tricky: changing character should trigger a session lookup/creation
     useEffect(() => {
+        // When currentCharacterId changes, we need to find the active session for it
+        // Or wait for user interaction?
+        // Let's stick to "Load latest session or create new" logic in loadHistory
+        // But loadHistory needs to be triggered.
         loadHistory();
-    }, [loadHistory]);
+    }, [currentCharacterId, loadHistory]);
 
     return {
         // State
@@ -234,6 +263,7 @@ export function useChatHistory() {
         lastUsedLore,
         triggeredEntries,
         tokenStats,
+        activeSessionId,
         
         // Actions
         loadHistory,

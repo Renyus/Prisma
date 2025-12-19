@@ -55,7 +55,7 @@ function parseContent(raw: string, userName: string, charName: string) {
   const extractedBlocks: ExtractedBlock[] = [];
 
   METADATA_TAGS.forEach((tag) => {
-    const regex = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, "gi");
+    const regex = new RegExp(`<${tag}(?:\s[^>]*)?>([\s\S]*?)<\/${tag}>`, "gi");
     let match;
     while ((match = regex.exec(cleanText)) !== null) {
       extractedBlocks.push({
@@ -68,7 +68,7 @@ function parseContent(raw: string, userName: string, charName: string) {
   });
 
   WRAPPER_TAGS.forEach((tag) => {
-    const regex = new RegExp(`<\\/?${tag}(?:\\s[^>]*)?>`, "gi");
+    const regex = new RegExp(`<\/?${tag}(?:\s[^>]*)?>`, "gi");
     cleanText = cleanText.replace(regex, "");
   });
 
@@ -85,10 +85,10 @@ export default function ChatMessage({ message, onTypingComplete }: ChatMessagePr
   const isSystem = message.role === "system";
   
   const { userName } = useChatSettingsStore();
-  const { characterCards, currentCardId } = useCharacterCardStore();
+  const { characters, currentCharacterId } = useCharacterCardStore(); // Renamed
   
-  const currentCard = characterCards.find(card => card.id === currentCardId);
-  const charName = currentCard?.name || "Character";
+  const currentCharacter = characters.find(c => c.id === currentCharacterId); // Renamed
+  const charName = currentCharacter?.name || "Character";
   const finalUserName = userName || "User";
 
   const { blocks, text: visibleText } = useMemo(() => {

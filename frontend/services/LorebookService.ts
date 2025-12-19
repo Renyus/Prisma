@@ -1,76 +1,69 @@
 import { APP_CONFIG } from "@/config/constants";
+import { API_ROUTES } from "@/config/apiRoutes";
+import { request } from "@/lib/backendClient";
 import type { Lorebook, LoreEntry } from "@/types/lorebook";
 
 export const LorebookService = {
     async getAll(): Promise<Lorebook[]> {
-        const res = await fetch(`${APP_CONFIG.API_BASE}/lore/books?user_id=${APP_CONFIG.DEFAULT_USER_ID}&_t=${Date.now()}`);
-        if (!res.ok) throw new Error("Failed to fetch lorebooks");
-        return res.json();
+        // Note: The original code passed `_t` for cache busting. 
+        // Our updated 'request' defaults to cache: 'no-store', so explicit timestamp might not be needed.
+        // But we keep user_id param.
+        const query = new URLSearchParams();
+        query.set("user_id", APP_CONFIG.DEFAULT_USER_ID);
+        // query.set("_t", String(Date.now())); // backendClient handles cache: no-store
+
+        return request<Lorebook[]>(`${API_ROUTES.LORE.BOOKS}?${query.toString()}`, { method: "GET" });
     },
 
     async create(name: string): Promise<Lorebook> {
-        const res = await fetch(`${APP_CONFIG.API_BASE}/lore/books?user_id=${APP_CONFIG.DEFAULT_USER_ID}`, {
+        const query = new URLSearchParams();
+        query.set("user_id", APP_CONFIG.DEFAULT_USER_ID);
+
+        return request<Lorebook>(`${API_ROUTES.LORE.BOOKS}?${query.toString()}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name }),
         });
-        if (!res.ok) throw new Error("Failed to create lorebook");
-        return res.json();
     },
 
     async delete(id: string): Promise<void> {
-        const res = await fetch(`${APP_CONFIG.API_BASE}/lore/books/${id}`, { method: "DELETE" });
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`Failed to delete lorebook: ${err}`);
-        }
+        return request<void>(API_ROUTES.LORE.BOOK_DELETE(id), { method: "DELETE" });
     },
 
     async update(id: string, changes: Partial<Lorebook>): Promise<Lorebook> {
-        const res = await fetch(`${APP_CONFIG.API_BASE}/lore/books/${id}`, {
+        return request<Lorebook>(API_ROUTES.LORE.BOOK_UPDATE(id), {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(changes),
         });
-        if (!res.ok) throw new Error("Failed to update lorebook");
-        return res.json();
     },
 
     async import(payload: any): Promise<{ id: string; name: string; count: number }> {
-        const res = await fetch(`${APP_CONFIG.API_BASE}/lore/import?user_id=${APP_CONFIG.DEFAULT_USER_ID}`, {
+        const query = new URLSearchParams();
+        query.set("user_id", APP_CONFIG.DEFAULT_USER_ID);
+
+        return request<{ id: string; name: string; count: number }>(`${API_ROUTES.LORE.IMPORT}?${query.toString()}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error("Failed to import lorebook");
-        return res.json();
     },
 
     async addEntry(bookId: string, entry: Partial<LoreEntry>): Promise<LoreEntry> {
-        const res = await fetch(`${APP_CONFIG.API_BASE}/lore/items?book_id=${bookId}`, {
+        const query = new URLSearchParams();
+        query.set("book_id", bookId);
+
+        return request<LoreEntry>(`${API_ROUTES.LORE.ITEMS}?${query.toString()}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(entry),
         });
-        if (!res.ok) throw new Error("Failed to add entry");
-        return res.json();
     },
 
     async updateEntry(id: string, changes: Partial<LoreEntry>): Promise<LoreEntry> {
-        const res = await fetch(`${APP_CONFIG.API_BASE}/lore/items/${id}`, {
+        return request<LoreEntry>(API_ROUTES.LORE.ITEM_UPDATE(id), {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(changes),
         });
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`Failed to update entry: ${err}`);
-        }
-        return res.json();
     },
 
     async deleteEntry(id: string): Promise<void> {
-        const res = await fetch(`${APP_CONFIG.API_BASE}/lore/items/${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete entry");
+        return request<void>(API_ROUTES.LORE.ITEM_DELETE(id), { method: "DELETE" });
     }
 };

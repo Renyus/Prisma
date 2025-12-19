@@ -1,86 +1,68 @@
-# backend/app/schemas/lorebook.py
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
-from datetime import datetime
+from typing import List, Optional, Any
+from pydantic import BaseModel, Field
+import uuid
 
-# --- LoreItem Schemas ---
-
-class LoreItemBase(BaseModel):
-    keys: List[str] 
-    content: str
-    comment: Optional[str] = ""
-    enabled: Optional[bool] = True
-    priority: Optional[int] = 10
-    order: Optional[int] = 0
-    probability: Optional[int] = 100
+class LorebookEntry(BaseModel):
+    """
+    代表 Lorebook 中的单个词条 (Entry)
+    """
+    # 唯一标识符，如果没有提供则自动生成
+    uid: str = Field(default_factory=lambda: str(uuid.uuid4()))
     
-    use_regex: Optional[bool] = Field(False, alias="useRegex")
-    case_sensitive: Optional[bool] = Field(False, alias="caseSensitive")
-    match_whole_word: Optional[bool] = Field(False, alias="matchWholeWord")
-    exclude: Optional[bool] = False
-    constant: Optional[bool] = False
-    contextual: Optional[bool] = False
-    authors_note: Optional[bool] = Field(False, alias="authorsNote")
-
-    model_config = ConfigDict(populate_by_name=True)
-
-class LoreItemCreate(LoreItemBase):
-    id: str
-    lorebook_id: str
-
-class LoreItemUpdate(BaseModel):
-    keys: Optional[List[str]] = None
-    content: Optional[str] = None
+    # 触发关键词，通常是一个字符串列表
+    # 注意：有些旧格式可能只有 'key' 字段，这里我们兼容 'keys'
+    keys: List[str] = Field(default_factory=list, description="触发该词条的关键词列表")
+    
+    # 核心内容
+    content: str = Field(..., description="被触发时插入到 Prompt 中的内容")
+    
+    # 词条名称（仅作为标识，不影响逻辑）
+    name: Optional[str] = Field(None, description="词条的名称")
+    
+    # 是否启用
+    enabled: bool = Field(True, description="该词条是否启用")
+    
+    # 触发逻辑设置
+    case_sensitive: bool = Field(False, description="关键词是否区分大小写")
+    
+    # 插入位置设置
+    insertion_order: int = Field(100, description="插入顺序/优先级，数值越高通常越靠后")
+    
+    # 扩展字段：有些格式包含 constant, position 等
+    constant: bool = Field(False, description="是否常驻（总是插入）")
+    position: str = Field("before_char", description="插入位置: before_char, after_char 等")
+    
+    # 辅助/可选字段 (根据你的 JSON 实际情况增减)
+    secondary_keys: List[str] = Field(default_factory=list, description="次要关键词")
     comment: Optional[str] = None
-    enabled: Optional[bool] = None
-    priority: Optional[int] = None
-    order: Optional[int] = None
-    probability: Optional[int] = None
     
-    use_regex: Optional[bool] = Field(None, alias="useRegex")
-    case_sensitive: Optional[bool] = Field(None, alias="caseSensitive")
-    match_whole_word: Optional[bool] = Field(None, alias="matchWholeWord")
-    exclude: Optional[bool] = None
-    constant: Optional[bool] = None
-    contextual: Optional[bool] = None
-    authors_note: Optional[bool] = Field(None, alias="authorsNote")
+    class Config:
+        # 允许通过字段名赋值 (Schema.content) 也可以通过别名赋值 (json['content'])
+        populate_by_name = True
+        # 如果 JSON 里有多余字段，忽略它们而不是报错
+        extra = "ignore" 
+
+class Lorebook(BaseModel):
+    """
+    代表整个 Lorebook 文件 (World Info)
+    """
+    # 书名
+    name: str = Field(..., description="世界书名称")
     
-    model_config = ConfigDict(populate_by_name=True)
-
-class LoreItemResponse(LoreItemBase):
-    id: str
-    lorebook_id: str
-    created_at: Optional[datetime] = None
-    
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
-
-# --- Lorebook Schemas ---
-
-class LorebookBase(BaseModel):
-    name: str
-    description: Optional[str] = ""
-    is_active: Optional[bool] = Field(True, alias="enabled")
-    
-    model_config = ConfigDict(populate_by_name=True)
-
-class LorebookCreate(LorebookBase):
-    id: str
-    user_id: str
-
-class LorebookUpdate(BaseModel):
-    name: Optional[str] = None
+    # 描述
     description: Optional[str] = None
-    is_active: Optional[bool] = Field(None, alias="enabled")
     
-    model_config = ConfigDict(populate_by_name=True)
-
-class LorebookResponse(LorebookBase):
-    id: str
-    user_id: str
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    # 版本号 (可选)
+    scan_depth: Optional[int] = Field(None, description="扫描深度")
     
-    # [关键] 属性名改为 entries，匹配 models.py 中的 relationship
-    entries: List[LoreItemResponse] = [] 
+    # 条目列表
+    # 注意：前端 JSON 的字段名可能是 'entries' 也可能是 dict 形式
+    # 这里假设是一个列表
+    entries: List[LorebookEntry] = Field(default_factory=list, description="所有的词条列表")
 
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    # 扩展字段：有些格式会在顶层放 settings
+    extensions: dict = Field(default_factory=dict, description="其他扩展数据")
+
+    class Config:
+        populate_by_name = True
+        extra = "ignore"

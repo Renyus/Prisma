@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useChatSettingsStore } from "@/store/useChatSettingsStore";
-import { useCharacterCardStore } from "@/store/useCharacterCardStore";
+import { useCharacterCardStore } from "@/store/useCharacterCardStore"; // Filename is still useCharacterCardStore
 import { useLorebookStore } from "@/store/useLorebookStore";
 import { useToastStore } from "@/store/useToastStore";
 import { ChatService } from "@/services/ChatService";
@@ -19,9 +19,12 @@ export function useSidebarController({ onNewChat }: { onNewChat?: () => void }) 
     const [isImporting, setIsImporting] = useState(false);
 
     // Stores
-    const characterCards = useCharacterCardStore((s) => s.characterCards);
-    const currentCardId = useCharacterCardStore((s) => s.currentCardId);
-    const currentCard = characterCards.find((c) => c.id === currentCardId) || null;
+    // Renamed characterCards to characters
+    const characters = useCharacterCardStore((s) => s.characters);
+    // Renamed currentCardId to currentCharacterId
+    const currentCharacterId = useCharacterCardStore((s) => s.currentCharacterId);
+    // Renamed currentCard to currentCharacter
+    const currentCharacter = characters.find((c) => c.id === currentCharacterId) || null;
     
     const lorebooks = useLorebookStore((s) => s.lorebooks);
     const currentBookId = useLorebookStore((s) => s.currentBookId);
@@ -52,12 +55,33 @@ export function useSidebarController({ onNewChat }: { onNewChat?: () => void }) 
         try {
           if (mode === "session") setIsClearingCurrent(true);
           else setIsClearingAll(true);
-    
-          await ChatService.clearHistory({
-              user_id: APP_CONFIG.DEFAULT_USER_ID,
-              scope: mode,
-              character_id: currentCardId || undefined
-          });
+          
+          // Old logic for chat history:
+          // await ChatService.clearHistory({
+          //     user_id: APP_CONFIG.DEFAULT_USER_ID,
+          //     scope: mode,
+          //     character_id: currentCharacterId || undefined // Renamed
+          // });
+
+          // New logic for session deletion
+          if (mode === "session" && currentCharacterId) {
+             // Assuming a session is tied to the current character and user
+             // This needs to be refined based on how sessions are managed in the UI.
+             // For now, let's assume we want to delete the active session.
+             // This requires knowing the current sessionId.
+             // As we don't have sessionId in store yet, we need to adapt this.
+             // For now, let's just make it a no-op or throw an error.
+             addToast("会话清除功能待完善", "warning");
+             throw new Error("Session clear not yet adapted to new API");
+
+          } else if (mode === "card" && currentCharacterId) {
+            // Deleting all sessions for a character, not just character card itself
+            // This would imply finding all sessions for this character and deleting them.
+            // For simplicity, for now, this will also be a no-op or error
+            addToast("角色记忆清除功能待完善", "warning");
+            throw new Error("Character memory clear not yet adapted to new API");
+          }
+
 
           if (onNewChat) onNewChat();
           addToast(mode === "session" ? "已清空当前对话" : "已删除角色记忆", "success");
@@ -74,18 +98,22 @@ export function useSidebarController({ onNewChat }: { onNewChat?: () => void }) 
           setIsExporting(true);
           addToast("正在准备导出数据...", "info"); // Show starting toast
           
-          const data = await ChatService.exportHistory({
-              user_id: APP_CONFIG.DEFAULT_USER_ID,
-              character_id: currentCard?.id,
-              character_name: currentCard?.name
-          });
+          // Old logic:
+          // const data = await ChatService.exportHistory({
+          //     user_id: APP_CONFIG.DEFAULT_USER_ID,
+          //     character_id: currentCharacter?.id, // Renamed
+          //     character_name: currentCharacter?.name // Renamed
+          // });
 
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = `chat_${APP_CONFIG.DEFAULT_USER_ID}_${Date.now()}.json`;
-          a.click();
-          // addToast("已开始下载", "success"); // 用户要求只保留一个 Toast
+          // New logic: export is per session, not per character card
+          addToast("导出功能待完善", "warning");
+          throw new Error("Export not yet adapted to new API (per session)");
+
+          // const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+          // const a = document.createElement("a");
+          // a.href = URL.createObjectURL(blob);
+          // a.download = `chat_${APP_CONFIG.DEFAULT_USER_ID}_${Date.now()}.json`;
+          // a.click();
         } catch (err) {
           addToast("导出失败", "error");
         } finally {
@@ -94,30 +122,34 @@ export function useSidebarController({ onNewChat }: { onNewChat?: () => void }) 
     };
 
     const handleImportFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        try {
-          setIsImporting(true);
-          const formData = new FormData();
-          formData.append("file", file);
+        // Old import logic:
+        // const file = event.target.files?.[0];
+        // if (!file) return;
+        // try {
+        //   setIsImporting(true);
+        //   const formData = new FormData();
+        //   formData.append("file", file);
           
-          await ChatService.importHistory(APP_CONFIG.DEFAULT_USER_ID, formData);
+        //   await ChatService.importHistory(APP_CONFIG.DEFAULT_USER_ID, formData);
 
-          if (onNewChat) onNewChat();
-          addToast("导入成功", "success");
-        } catch (err) {
-          addToast("导入失败", "error");
-        } finally {
-          setIsImporting(false);
-          event.target.value = "";
-        }
+        //   if (onNewChat) onNewChat();
+        //   addToast("导入成功", "success");
+        // } catch (err) {
+        //   addToast("导入失败", "error");
+        // } finally {
+        //   setIsImporting(false);
+        //   event.target.value = "";
+        // }
+        addToast("导入功能待完善", "warning");
+        throw new Error("Import not yet adapted to new API");
     };
 
     return {
         // State
         router, pathname, fileInputRef,
         isClearingCurrent, isClearingAll, isExporting, isImporting,
-        currentCard, currentBook, currentPreset,
+        currentCharacter: currentCharacter, // Renamed
+        currentBook, currentPreset,
         
         // Settings State
         contextMessages, contextTokens,

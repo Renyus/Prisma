@@ -1,56 +1,79 @@
-# backend/app/schemas/character.py
-from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Optional, Any, Dict, Union
+from pydantic import BaseModel, Field
 
-# 基础字段
-class CharacterCardBase(BaseModel):
+# --- 1. 基础组件 ---
+
+class RegexScript(BaseModel):
+    """正则脚本：酒馆用来修改文本的规则"""
+    scriptName: str
+    findRegex: str
+    replaceString: Optional[str] = ""
+    # 允许额外字段 (extra="allow") 确保不丢数据
+    class Config:
+        extra = "allow"
+
+class CharacterBookEntry(BaseModel):
+    """内置世界书条目"""
+    keys: List[str]
+    content: str
+    enabled: bool = True
+    insertion_order: int = 100
+    case_sensitive: Optional[bool] = None
+    
+    class Config:
+        extra = "allow"
+
+class CharacterBook(BaseModel):
+    """世界书集合"""
+    entries: List[CharacterBookEntry] = Field(default_factory=list)
+    name: Optional[str] = None
+
+# --- 2. 核心数据层 (Data) ---
+
+class DataExtensions(BaseModel):
+    """扩展字段：存放正则、深度提示词等"""
+    talkativeness: Union[str, float] = "0.5"
+    fav: bool = False
+    depth_prompt: Optional[Dict[str, Any]] = None
+    regex_scripts: List[RegexScript] = Field(default_factory=list)
+    
+    class Config:
+        extra = "allow"
+
+class CardData(BaseModel):
+    """V3 数据的核心内容"""
     name: str
-    description: Optional[str] = ""
-    persona: Optional[str] = ""
-    scenario: Optional[str] = ""
-    first_mes: Optional[str] = ""
-    system_prompt: Optional[str] = ""
-    creator_notes: Optional[str] = ""
-    tags: List[str] = [] 
+    description: str = ""
+    personality: str = ""
+    scenario: str = ""
+    first_mes: str = ""
+    mes_example: str = ""
+    creator_notes: str = ""
+    system_prompt: str = ""
+    post_history_instructions: str = ""
+    tags: List[str] = Field(default_factory=list)
+    creator: str = ""
+    character_version: str = ""
+    alternate_greetings: List[str] = Field(default_factory=list)
     
-    # [新增] V2 字段
-    alternate_greetings: List[str] = []
+    # 关键嵌套
+    extensions: DataExtensions = Field(default_factory=DataExtensions)
+    character_book: Optional[CharacterBook] = None
 
-    # [新增] 对应 models.py 中的 user_alias
-    user_alias: Optional[str] = "" 
+    class Config:
+        extra = "allow"
+
+# --- 3. 根模型 ---
+
+class TavernCardV3(BaseModel):
+    """对应的就是你的 .json 文件最外层"""
+    spec: str = "chara_card_v3"
+    spec_version: str = "3.0"
+    data: CardData # 所有有效数据都在这里
     
-    # [新增] 对应前端的 source_filename 字段
-    source_filename: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True)
-
-# 创建时需要的字段
-class CharacterCardCreate(CharacterCardBase):
-    id: str 
-
-# 更新时需要的字段
-class CharacterCardUpdate(BaseModel):
+    # 根目录的冗余字段 (V2兼容字段)
     name: Optional[str] = None
     description: Optional[str] = None
-    persona: Optional[str] = None
-    scenario: Optional[str] = None
-    first_mes: Optional[str] = None
-    system_prompt: Optional[str] = None
-    creator_notes: Optional[str] = None
-    tags: Optional[List[str]] = None
-    alternate_greetings: Optional[List[str]] = None
-    user_alias: Optional[str] = None
-    source_filename: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True)
-
-# 返回给前端的字段
-class CharacterCardResponse(CharacterCardBase):
-    id: str
-    created_at: Optional[datetime] = None
     
-    # 注意：models.py 里 CharacterCard 没有 updated_at，这里如果加上会报错
-    # 如果你需要 updated_at，必须先去 models.py 给 CharacterCard 加上该字段
-    
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        extra = "allow"

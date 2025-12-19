@@ -43,117 +43,75 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
   const {
     messages, isSending, lastUsedLore, triggeredEntries, availableModels, activeModelInfo,
     title, displayedModelName, displayedVendorName, isOnline,
-    userName, currentModel, currentCard, tokenStats,
+    userName, currentModel, currentCharacter, tokenStats,
     setUserName, setCurrentModel, handleSend, handleTypingFinished,
     startNewChat, reloadHistory
   } = useChatController();
 
   useImperativeHandle(ref, () => ({ startNewChat, reloadHistory }), [startNewChat, reloadHistory]);
 
-  // Click Outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsModelMenuOpen(false);
-      }
+  // --- Scroll Logic ---
+  const scrollToBottom = useCallback(() => {
+    if (listRef.current) {
+      listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+      setHasNewMessages(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Scroll Shadow Logic
-  const checkScrollPosition = useCallback(() => {
-    if (!listRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-    
-    // 顶部阴影控制
-    setScrolled(scrollTop > 10);
-
-    // 底部吸附控制
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    setIsNearBottom(distanceFromBottom <= 100);
-  }, []);
+  const handleNewMessageClick = () => scrollToBottom();
 
   useEffect(() => {
-    const listElement = listRef.current;
-    if (!listElement) return;
-    let scrollTimeout: NodeJS.Timeout;
-    
+    const el = listRef.current;
+    if (!el) return;
+
     const handleScroll = () => {
-      setIsUserScrolling(true);
-      checkScrollPosition();
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => setIsUserScrolling(false), 150);
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const isBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setIsNearBottom(isBottom);
+      setScrolled(scrollTop > 0);
+      if (isBottom) setHasNewMessages(false);
     };
 
-    listElement.addEventListener("scroll", handleScroll, { passive: true });
-    checkScrollPosition();
-    return () => {
-      listElement.removeEventListener("scroll", handleScroll);
-      clearTimeout(scrollTimeout);
-    };
-  }, [checkScrollPosition]);
+    el.addEventListener("scroll", handleScroll);
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  // Auto Scroll Logic
   useEffect(() => {
     if (messages.length > lastMessageCount) {
+      if (isNearBottom) setTimeout(scrollToBottom, 50);
+      else setHasNewMessages(true);
       setLastMessageCount(messages.length);
-      if (isNearBottom || !isUserScrolling) {
-        scrollToBottom();
-        setHasNewMessages(false);
-      } else {
-        setHasNewMessages(true);
-      }
     }
-  }, [messages.length, isNearBottom, isUserScrolling]);
-
-  useEffect(() => {
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg?.isLoading || lastMsg?.isStreaming) {
-      if (isNearBottom || !isUserScrolling) scrollToBottom();
-    }
-  }, [messages, isNearBottom, isUserScrolling]);
-
-  const scrollToBottom = () => {
-    requestAnimationFrame(() => {
-      listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-    });
-  };
-
-  const handleNewMessageClick = () => {
-    scrollToBottom();
-    setHasNewMessages(false);
-  };
-
-  if (!isMounted) return <div className="flex-1 w-full bg-white" />;
+  }, [messages.length, isNearBottom, lastMessageCount, scrollToBottom]);
 
   return (
-    <div className="flex-1 flex flex-col w-full min-h-0 bg-white font-sans text-[#1F1F1F]">
-      
-      {/* 🟢 Google 风格顶部栏: 纯白 + 滚动浮现阴影 */}
-      <div className={`
-        flex-none w-full px-6 py-4 flex justify-between items-center z-20 transition-all duration-300
-        ${scrolled ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100/50" : "bg-white"}
-      `}>
-        {/* 标题区：使用 PrismaLogo 替代纯文本 */}
-        <div className="flex flex-col">
-           {/* 如果想保留 "RPG" 标签，可以作为 collapsed 属性或者修改 Logo 组件内部，
-               但为了美观，建议直接放 Logo，它自带了 Roleplay 小字 */}
-           <PrismaLogo />
+    <div className="flex flex-col h-full w-full relative bg-white">
+      {/* 顶部栏 (Header) */}
+      <div 
+        className={`
+          flex-none h-16 flex items-center justify-between px-4 md:px-8 border-b transition-all duration-200 z-10
+          ${scrolled ? "bg-white/80 backdrop-blur-md border-gray-200 shadow-sm" : "bg-white border-transparent"}
+        `}
+      >
+        {/* 左侧：Logo & Title */}
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="hidden md:block">
+            <PrismaLogo  />
+          </div>
+          <div className="h-4 w-[1px] bg-gray-200 hidden md:block" />
+          
         </div>
 
-        {/* 右侧操作区 (Google Pills) */}
-        <div className="relative flex items-center gap-3" ref={menuRef}>
-
-          {/* 用户名 Pill */}
-          <div className="hidden md:flex items-center bg-[#F0F4F9] hover:bg-[#E2E7EB] transition-colors rounded-full px-4 py-2 h-10 group cursor-text">
-             <User size={14} className="text-[#444746] mr-2" />
-             <input 
-               type="text" 
+        {/* 右侧：用户名 & 模型选择 */}
+        <div className="flex items-center gap-3">
+          {/* 用户名输入 */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
+             <User size={14} className="text-[#444746]" />
+             <input
                value={userName}
                onChange={(e) => setUserName(e.target.value)}
                className="bg-transparent text-sm font-medium text-[#1F1F1F] w-24 focus:outline-none placeholder:text-[#444746]/50"
-               placeholder={ (currentCard as any)?.user_alias || "User" }
+               placeholder={ (currentCharacter as any)?.user_alias || "User" }
              />
           </div>
 
@@ -243,7 +201,7 @@ const ChatArea = forwardRef<ChatAreaHandle>((_, ref) => {
               </div>
             ))
           )}
-
+          {/* 后续需要修复！ */}
           {/* 🟢 世界书触发预览 (Material Chips) */}
           <AnimatePresence>
             {((triggeredEntries && triggeredEntries.length > 0) || lastUsedLore) && (
